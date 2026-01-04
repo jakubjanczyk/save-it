@@ -118,6 +118,10 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 
 - Write assertions inside `it()` or `test()` blocks
 - Keep tests small and focused: **one behavior per test** (don’t test multiple unrelated things in a single test)
+- Never use dynamic imports (e.g. `await import(...)`) in tests or app code. Use normal static imports.
+- Test behavior, not just rendering:
+  - Assert user-visible outcomes (navigation, error messages, state changes, side effects).
+- Do TDD for new work: write a failing test first, run it, then implement to make it pass.
 - Avoid done callbacks in async tests - use async/await instead
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat - avoid excessive `describe` nesting

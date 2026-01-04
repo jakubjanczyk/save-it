@@ -8,6 +8,10 @@ export default defineConfig({
   },
   webServer: {
     command: "pnpm dev --port 3000",
+    env: {
+      APP_PASSWORD: "test-password",
+      JWT_SECRET: "test-jwt-secret",
+    },
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
   },

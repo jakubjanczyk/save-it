@@ -864,6 +864,7 @@ utilityName.test.ts     # Utility tests
 ### Test Granularity
 
 - Keep tests small and focused: **one behavior per test** (avoid asserting multiple unrelated things in a single test).
+- Prefer real integration over mocks; avoid module-level mocks unless you’re at a boundary you can’t reasonably exercise in tests.
 
 ### Mocking Strategy
 
@@ -1136,11 +1137,15 @@ Tests should run on every PR:
 - [x] Next.js 16 + Tailwind scaffold (App Router, Turbopack) using Biome (no ESLint)
 - [x] shadcn/ui initialized (zinc, CSS variables) + components: `button`, `input`, `card`, `dialog`, `sonner` (toast is deprecated)
 - [x] Dependencies installed: `convex`, `effect`, `vitest`, `playwright`, `@testing-library/*`, `jsdom`
-- [x] Vitest configured via `vitest.config.ts` + `vitest.setup.ts`; tests are colocated next to code (example: `lib/utils.test.ts`)
+- [x] Vitest configured via `vitest.config.ts` + `vitest.setup.ts`; tests are colocated next to code (example: `lib/utils.test.ts`); test setup keeps `jose` working under `jsdom`
 - [x] Playwright configured via `playwright.config.ts` (E2E folder present)
 - [x] Convex schema stubbed in `convex/schema.ts` (Convex `dev` not run yet)
 - [x] Tests for Convex schema/indexes: `convex/schema.test.ts`
 - [x] Effect error types + tests: `lib/errors.ts`, `lib/errors.test.ts`
+- [x] Auth utilities + tests: `lib/auth.ts`, `lib/auth.test.ts` (uses `jose`)
+- [x] Password middleware scaffold: `proxy.ts` + `middleware.ts` (tests: `proxy.test.ts`)
+- [x] Login page + server action scaffold: `app/login/page.tsx`, `app/login/actions.ts` (tests: `app/login/page.test.tsx`)
+- [x] Auth E2E spec drafted: `e2e/auth.spec.ts` (run with `pnpm e2e`)
 - [x] Biome configured to extend Ultracite (`biome.json`)
 - [x] Repo hygiene: `.gitignore`, `.env.example`, `CLAUDE.md`, `AGENTS.md` symlink, updated `README.md`
 
