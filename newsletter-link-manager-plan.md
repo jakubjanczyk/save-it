@@ -1220,6 +1220,15 @@ Tests should run on every PR:
 
 ### Phase 2: Sender Management
 
+**Progress (done in this repo):**
+- [x] Steps 23–24: Sender Convex functions + official tests (`convex-test`)
+- [x] Step 25: Settings page layout scaffold (`/settings`)
+- [x] Step 26: `SenderForm` tests (colocated)
+- [x] Step 27: `SenderForm` UI scaffold
+- [x] Step 28: `SenderList` tests (colocated)
+- [x] Step 29: `SenderList` UI scaffold
+- [x] Wire `/senders` page to Convex (requires `NEXT_PUBLIC_CONVEX_URL`)
+
 23. Write tests for sender Convex functions (`convex/senders.test.ts`)
     - Test add sender
     - Test list senders
