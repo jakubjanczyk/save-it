@@ -15,10 +15,10 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-6">
+    <div className="dark flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
+          <CardTitle>Login to Save it</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="grid gap-4">
