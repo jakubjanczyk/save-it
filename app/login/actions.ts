@@ -37,7 +37,8 @@ export async function login(
     expiresInSeconds: 60 * 60 * 24 * 30,
   });
 
-  cookies().set(SESSION_COOKIE_NAME, token, {
+  const cookiesObject = await cookies()
+  cookiesObject.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

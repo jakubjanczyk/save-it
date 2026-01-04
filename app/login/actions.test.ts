@@ -1,5 +1,3 @@
-/* @vitest-environment node */
-
 import { expect, test, vi } from "vitest";
 
 const { cookiesMock, cookiesSetMock, redirectMock } = vi.hoisted(() => {
