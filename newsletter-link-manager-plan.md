@@ -1135,6 +1135,7 @@ Tests should run on every PR:
 - [x] Vitest configured via `vitest.config.ts` + `vitest.setup.ts`; tests are colocated next to code (example: `lib/utils.test.ts`)
 - [x] Playwright configured via `playwright.config.ts` (E2E folder present)
 - [x] Convex schema stubbed in `convex/schema.ts` (Convex `dev` not run yet)
+- [x] Tests for Convex schema/indexes: `convex/schema.test.ts`
 - [x] Biome configured to extend Ultracite (`biome.json`)
 - [x] Repo hygiene: `.gitignore`, `.env.example`, `CLAUDE.md`, `AGENTS.md` symlink, updated `README.md`
 
