@@ -117,6 +117,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 ## Testing
 
 - Write assertions inside `it()` or `test()` blocks
+- Keep tests small and focused: **one behavior per test** (don’t test multiple unrelated things in a single test)
 - Avoid done callbacks in async tests - use async/await instead
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat - avoid excessive `describe` nesting

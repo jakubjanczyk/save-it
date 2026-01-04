@@ -861,6 +861,10 @@ utilityName.test.ts     # Utility tests
   feature.spec.ts       # E2E test for feature
 ```
 
+### Test Granularity
+
+- Keep tests small and focused: **one behavior per test** (avoid asserting multiple unrelated things in a single test).
+
 ### Mocking Strategy
 
 **Gmail API (`/test/mocks/gmail.ts`):**
@@ -1136,6 +1140,7 @@ Tests should run on every PR:
 - [x] Playwright configured via `playwright.config.ts` (E2E folder present)
 - [x] Convex schema stubbed in `convex/schema.ts` (Convex `dev` not run yet)
 - [x] Tests for Convex schema/indexes: `convex/schema.test.ts`
+- [x] Effect error types + tests: `lib/errors.ts`, `lib/errors.test.ts`
 - [x] Biome configured to extend Ultracite (`biome.json`)
 - [x] Repo hygiene: `.gitignore`, `.env.example`, `CLAUDE.md`, `AGENTS.md` symlink, updated `README.md`
 

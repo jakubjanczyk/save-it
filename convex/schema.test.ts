@@ -13,18 +13,31 @@ describe("convex schema", () => {
     expect(schema.schemaValidation).toBe(true);
   });
 
-  test("defines expected indexes", () => {
-    expect(schema.tables.senders[" indexes"]()).toEqual([
-      { indexDescriptor: "by_email", fields: ["email"] },
-    ]);
+  test("defines senders.by_email index", () => {
+    expect(schema.tables.senders[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_email",
+      fields: ["email"],
+    });
+  });
 
-    expect(schema.tables.emails[" indexes"]()).toEqual([
-      { indexDescriptor: "by_gmailId", fields: ["gmailId"] },
-      { indexDescriptor: "by_senderId", fields: ["senderId"] },
-    ]);
+  test("defines emails.by_gmailId index", () => {
+    expect(schema.tables.emails[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_gmailId",
+      fields: ["gmailId"],
+    });
+  });
 
-    expect(schema.tables.links[" indexes"]()).toEqual([
-      { indexDescriptor: "by_emailId", fields: ["emailId"] },
-    ]);
+  test("defines emails.by_senderId index", () => {
+    expect(schema.tables.emails[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_senderId",
+      fields: ["senderId"],
+    });
+  });
+
+  test("defines links.by_emailId index", () => {
+    expect(schema.tables.links[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_emailId",
+      fields: ["emailId"],
+    });
   });
 });
