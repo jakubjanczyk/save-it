@@ -33,7 +33,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 ### Type Safety & Explicitness
 
 - Use explicit types for function parameters and return values when they enhance clarity
-- Prefer `unknown` over `any` when the type is genuinely unknown
+- NEVER use `any` type
 - Use const assertions (`as const`) for immutable values and literal types
 - Leverage TypeScript's type narrowing instead of type assertions
 - Use meaningful variable names instead of magic numbers - extract constants with descriptive names
@@ -41,7 +41,6 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 ### Modern JavaScript/TypeScript
 
 - Use arrow functions for callbacks and short functions
-- Prefer `for...of` loops over `.forEach()` and indexed `for` loops
 - Use optional chaining (`?.`) and nullish coalescing (`??`) for safer property access
 - Prefer template literals over string concatenation
 - Use destructuring for object and array assignments
@@ -62,6 +61,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Use the `key` prop for elements in iterables (prefer unique IDs over array indices)
 - Nest children between opening and closing tags instead of passing as props
 - Don't define components inside other components
+- Use shadcn/ui components for UI elements, use shadcn cli to add them
 - Use semantic HTML and ARIA attributes for accessibility:
   - Provide meaningful alt text for images
   - Use proper heading hierarchy
