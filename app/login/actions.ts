@@ -3,8 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { isValidPassword, signSessionToken } from "@/lib/auth";
-import { SESSION_COOKIE_NAME } from "@/proxy";
+import {isValidPassword, SESSION_COOKIE_NAME, signSessionToken} from "@/lib/auth"
 
 export interface LoginState {
   error?: string;

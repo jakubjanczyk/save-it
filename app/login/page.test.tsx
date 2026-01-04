@@ -18,8 +18,8 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
-import { SESSION_COOKIE_NAME } from "@/proxy";
 import LoginPage from "./page";
+import {SESSION_COOKIE_NAME} from "@/lib/auth"
 
 beforeEach(() => {
   cookiesSetMock.mockClear();

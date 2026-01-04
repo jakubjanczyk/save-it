@@ -1,9 +1,8 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import type {NextRequest} from "next/server"
+import {NextResponse} from "next/server"
 
-import { verifySessionToken } from "@/lib/auth";
+import {SESSION_COOKIE_NAME, verifySessionToken} from "@/lib/auth"
 
-export const SESSION_COOKIE_NAME = "nlm_session";
 export const LOGIN_PATHNAME = "/login";
 
 export type AuthDecision =
