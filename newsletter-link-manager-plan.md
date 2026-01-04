@@ -1228,6 +1228,7 @@ Tests should run on every PR:
 - [x] Step 28: `SenderList` tests (colocated)
 - [x] Step 29: `SenderList` UI scaffold
 - [x] Wire `/senders` page to Convex (requires `NEXT_PUBLIC_CONVEX_URL`)
+- [x] Step 30: E2E sender management spec drafted (`e2e/senders.spec.ts`)
 
 23. Write tests for sender Convex functions (`convex/senders.test.ts`)
     - Test add sender

@@ -18,9 +18,5 @@ test("allows access after successful login", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Password").fill("test-password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "To get started, edit the page.tsx file.",
-    })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
 });
