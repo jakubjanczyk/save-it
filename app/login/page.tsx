@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
 
   return (
-    <div className="dark flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Login to Save it</CardTitle>
