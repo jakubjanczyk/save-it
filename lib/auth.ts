@@ -1,6 +1,6 @@
-import crypto from "node:crypto"
+import crypto from "node:crypto";
 
-import {jwtVerify, SignJWT} from "jose"
+import { jwtVerify, SignJWT } from "jose";
 
 export interface SessionClaims {
   sub: string;
@@ -54,4 +54,4 @@ export function isValidPassword(params: {
   return crypto.timingSafeEqual(providedHash, expectedHash);
 }
 
-export const SESSION_COOKIE_NAME = "save_it_session"
+export const SESSION_COOKIE_NAME = "save_it_session";

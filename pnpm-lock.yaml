@@ -81,6 +81,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.0(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2))
+      convex-test:
+        specifier: 0.0.41
+        version: 0.0.41(convex@1.31.2(react@19.2.3))
       jsdom:
         specifier: ^27.4.0
         version: 27.4.0
@@ -96,6 +99,9 @@ importers:
       ultracite:
         specifier: 7.0.6
         version: 7.0.6(effect@3.19.14)(typescript@5.9.3)
+      vite:
+        specifier: 7.3.0
+        version: 7.3.0(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@20.19.27)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)
@@ -1437,6 +1443,11 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  convex-test@0.0.41:
+    resolution: {integrity: sha512-GPHeYFOi70n7UtW0eCEQFVhzl/+m8PvbWkDCbKpHLybI1MrScf4sVpGeM0cC2qmtxiduxa2nLPbehPalhh9oyQ==}
+    peerDependencies:
+      convex: ^1.16.4
 
   convex@1.31.2:
     resolution: {integrity: sha512-RFuJOwlL2bM5X63egvBI5ZZZH6wESREpAbHsLjODxzDeJuewTLKrEnbvHV/NWp1uJYpgEFJziuGHmZ0tnAmmJg==}
@@ -3224,6 +3235,10 @@ snapshots:
   consola@3.4.2: {}
 
   convert-source-map@2.0.0: {}
+
+  convex-test@0.0.41(convex@1.31.2(react@19.2.3)):
+    dependencies:
+      convex: 1.31.2(react@19.2.3)
 
   convex@1.31.2(react@19.2.3):
     dependencies:

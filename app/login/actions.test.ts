@@ -18,8 +18,8 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
+import { SESSION_COOKIE_NAME } from "@/lib/auth";
 import { login } from "./actions";
-import {SESSION_COOKIE_NAME} from "@/lib/auth"
 
 test("returns config error when APP_PASSWORD missing", async () => {
   process.env.APP_PASSWORD = "";

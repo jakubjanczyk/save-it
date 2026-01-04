@@ -17,6 +17,7 @@
     "lib": ["ES2021", "dom"],
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
+    "types": ["vite/client"],
     "isolatedModules": true,
     "noEmit": true
   },

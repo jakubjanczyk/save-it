@@ -18,8 +18,8 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
+import { SESSION_COOKIE_NAME } from "@/lib/auth";
 import LoginPage from "./page";
-import {SESSION_COOKIE_NAME} from "@/lib/auth"
 
 beforeEach(() => {
   cookiesSetMock.mockClear();
@@ -101,4 +101,3 @@ test("calls redirect when password is valid", async () => {
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 });
-

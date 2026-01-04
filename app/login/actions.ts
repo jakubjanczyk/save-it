@@ -3,7 +3,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import {isValidPassword, SESSION_COOKIE_NAME, signSessionToken} from "@/lib/auth"
+import {
+  isValidPassword,
+  SESSION_COOKIE_NAME,
+  signSessionToken,
+} from "@/lib/auth";
 
 export interface LoginState {
   error?: string;
@@ -36,7 +40,7 @@ export async function login(
     expiresInSeconds: 60 * 60 * 24 * 30,
   });
 
-  const cookiesObject = await cookies()
+  const cookiesObject = await cookies();
   cookiesObject.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",

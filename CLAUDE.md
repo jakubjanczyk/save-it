@@ -118,6 +118,8 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 
 - Write assertions inside `it()` or `test()` blocks
 - Keep tests small and focused: **one behavior per test** (don’t test multiple unrelated things in a single test)
+- After any code change, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
+- For Convex functions, use the official Convex testing utilities (avoid hand-rolled `ctx/db` mocks).
 - Never use dynamic imports (e.g. `await import(...)`) in tests or app code. Use normal static imports.
 - Test behavior, not just rendering:
   - Assert user-visible outcomes (navigation, error messages, state changes, side effects).

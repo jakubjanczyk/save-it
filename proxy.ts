@@ -1,7 +1,7 @@
-import type {NextRequest} from "next/server"
-import {NextResponse} from "next/server"
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import {SESSION_COOKIE_NAME, verifySessionToken} from "@/lib/auth"
+import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
 export const LOGIN_PATHNAME = "/login";
 
@@ -54,4 +54,4 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
-export default middleware
+export default middleware;
