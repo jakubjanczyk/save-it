@@ -147,7 +147,7 @@ If no content links are found, return: { "links": [] }
 **Model configuration:**
 - Default: Gemini 3 Flash (`gemini-3-flash`)
 - Configurable via `LLM_MODEL` env variable
-- Use AI SDK's `generateObject` for structured output
+- Use AI SDK `generateText` with `Output.object` for structured output
 
 **Error handling:**
 - If LLM returns malformed JSON or call fails:
@@ -1296,6 +1296,7 @@ Tests should run on every PR:
 **Progress (done in this repo):**
 - [x] Step 46: Link extractor error utilities + tests (`lib/link-extractor.ts`, `lib/link-extractor.test.ts`)
 - [x] Steps 47–48: Substack detector + tests (`lib/substack-detector.ts`, `lib/substack-detector.test.ts`)
+- [x] Steps 50–51: LLM extractor + tests (`lib/llm-extractor.ts`, `lib/llm-extractor.test.ts`)
 - [x] Step 49: AI SDK wiring (`lib/ai.ts`, `lib/ai.test.ts`)
 
 46. Write tests for link extractor Effect errors (`lib/link-extractor.test.ts`)
