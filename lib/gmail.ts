@@ -120,7 +120,7 @@ async function fetchJson(fetcher: Fetcher, url: string, init: RequestInit) {
       body,
       retryAfter: parseRetryAfter(response.headers.get("retry-after")),
       status: response.status,
-    }
+    };
 
     throw failure;
   }

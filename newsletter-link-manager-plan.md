@@ -1256,6 +1256,7 @@ Tests should run on every PR:
 - [x] Steps 34–35: `google-auth` Convex functions + tests
 - [x] Step 36: Gmail error mapping tests (`lib/gmail.test.ts`)
 - [x] Steps 37–38: Gmail Effect helpers + tests (`lib/gmail.ts`, `lib/gmail.test.ts`)
+- [x] Steps 39–40: Google OAuth routes scaffolded (`app/api/auth/google/*`)
 
 32. Create Google Cloud project, enable Gmail API
 33. Configure OAuth consent screen (test mode for personal use)
