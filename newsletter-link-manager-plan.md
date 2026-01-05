@@ -1258,6 +1258,7 @@ Tests should run on every PR:
 - [x] Steps 37–38: Gmail Effect helpers + tests (`lib/gmail.ts`, `lib/gmail.test.ts`)
 - [x] Steps 39–40: Google OAuth routes scaffolded (`app/api/auth/google/*`)
 - [x] Steps 41–43: `GmailConnection` component + settings integration
+- [x] Step 44: Mocked OAuth flow integration test (`app/api/auth/google/oauth-flow.test.ts`)
 
 32. Create Google Cloud project, enable Gmail API
 33. Configure OAuth consent screen (test mode for personal use)
@@ -1287,7 +1288,7 @@ Tests should run on every PR:
     - Test disconnect button action
 42. Build `GmailConnection` component - make tests pass
 43. Add to settings page
-44. Write E2E test for OAuth flow (`e2e/gmail-oauth.spec.ts`) - mocked
+44. Write E2E test for OAuth flow (`app/api/auth/google/oauth-flow.test.ts`) - mocked
 45. Test OAuth flow and email fetching
 
 ### Phase 4: Link Extraction
