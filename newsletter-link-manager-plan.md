@@ -1297,6 +1297,7 @@ Tests should run on every PR:
 - [x] Step 46: Link extractor error utilities + tests (`lib/link-extractor.ts`, `lib/link-extractor.test.ts`)
 - [x] Steps 47–48: Substack detector + tests (`lib/substack-detector.ts`, `lib/substack-detector.test.ts`)
 - [x] Steps 50–51: LLM extractor + tests (`lib/llm-extractor.ts`, `lib/llm-extractor.test.ts`)
+- [x] Steps 52–53: Full link extractor + tests (`lib/link-extractor.ts`, `lib/link-extractor-flow.test.ts`)
 - [x] Step 49: AI SDK wiring (`lib/ai.ts`, `lib/ai.test.ts`)
 
 46. Write tests for link extractor Effect errors (`lib/link-extractor.test.ts`)

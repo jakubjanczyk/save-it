@@ -5,6 +5,8 @@ import {
   ExtractionParseError,
   ExtractionTimeout,
 } from "./errors";
+import { type ExtractedLink, llmExtractLinks } from "./llm-extractor";
+import { checkSubstackPattern, type DetectedLink } from "./substack-detector";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -55,4 +57,28 @@ export function withExtractionTimeout<A, E>(
     duration: Duration.millis(timeoutMs),
     onTimeout: () => new ExtractionTimeout({ timeoutMs }),
   });
+}
+
+export function extractLinks(
+  html: string,
+  subject: string,
+  from: string,
+  options?: {
+    checkSubstack?: typeof checkSubstackPattern;
+    llmExtract?: typeof llmExtractLinks;
+  }
+): Effect.Effect<
+  ExtractedLink[],
+  ExtractionLLMError | ExtractionParseError | ExtractionTimeout
+> {
+  const checkSubstack = options?.checkSubstack ?? checkSubstackPattern;
+  const llmExtract = options?.llmExtract ?? llmExtractLinks;
+
+  return Effect.orElse(
+    checkSubstack(html, subject, from) as Effect.Effect<
+      DetectedLink[],
+      unknown
+    >,
+    () => llmExtract(html)
+  );
 }
