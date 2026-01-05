@@ -1252,14 +1252,19 @@ Tests should run on every PR:
 
 ### Phase 3: Gmail Integration
 
+**Progress (done in this repo):**
+- [x] Steps 34–35: `google-auth` Convex functions + tests
+- [x] Step 36: Gmail error mapping tests (`lib/gmail.test.ts`)
+- [x] Steps 37–38: Gmail Effect helpers + tests (`lib/gmail.ts`, `lib/gmail.test.ts`)
+
 32. Create Google Cloud project, enable Gmail API
 33. Configure OAuth consent screen (test mode for personal use)
-34. Write tests for googleAuth Convex functions (`convex/googleAuth.test.ts`)
+34. Write tests for googleAuth Convex functions (`convex/google-auth.test.ts`)
     - Test save tokens
     - Test get tokens
     - Test clear tokens
     - Test token expiration check
-35. Implement googleAuth Convex functions - make tests pass
+35. Implement googleAuth Convex functions (`convex/google-auth.ts`) - make tests pass
 36. Write tests for Gmail Effect errors (`lib/gmail.test.ts`)
     - Test GmailTokenExpired error mapping
     - Test GmailRateLimited error mapping
