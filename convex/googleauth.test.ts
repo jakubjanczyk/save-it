@@ -18,28 +18,28 @@ const saveTokens: FunctionReference<
   "public",
   GoogleTokens,
   string
-> = makeFunctionReference("google-auth:saveTokens");
+> = makeFunctionReference("googleauth:saveTokens");
 
 const getTokens: FunctionReference<
   "query",
   "public",
   Record<string, never>,
   GoogleTokens | null
-> = makeFunctionReference("google-auth:getTokens");
+> = makeFunctionReference("googleauth:getTokens");
 
 const clearTokens: FunctionReference<
   "mutation",
   "public",
   Record<string, never>,
   null
-> = makeFunctionReference("google-auth:clearTokens");
+> = makeFunctionReference("googleauth:clearTokens");
 
 const isTokenExpired: FunctionReference<
   "query",
   "public",
   Record<string, never>,
   boolean
-> = makeFunctionReference("google-auth:isTokenExpired");
+> = makeFunctionReference("googleauth:isTokenExpired");
 
 test("getTokens returns null when no tokens are stored", async () => {
   const t = convexTest(schema, modules);

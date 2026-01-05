@@ -16,14 +16,14 @@ const saveTokens: FunctionReference<
   "public",
   GoogleAuthTokens,
   string
-> = makeFunctionReference("google-auth:saveTokens");
+> = makeFunctionReference("googleauth:saveTokens");
 
 const getTokens: FunctionReference<
   "query",
   "public",
   Record<string, never>,
   GoogleAuthTokens | null
-> = makeFunctionReference("google-auth:getTokens");
+> = makeFunctionReference("googleauth:getTokens");
 
 export interface GoogleOAuthCallbackEnv {
   clientId: string;

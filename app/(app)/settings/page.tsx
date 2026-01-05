@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { GmailConnectionCard } from "@/components/gmail-connection-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,14 +34,7 @@ export default function SettingsPage() {
         </CardFooter>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Gmail</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          Connect Gmail to fetch and process newsletters.
-        </CardContent>
-      </Card>
+      <GmailConnectionCard />
     </div>
   );
 }
