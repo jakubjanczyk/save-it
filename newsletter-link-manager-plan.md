@@ -1293,7 +1293,10 @@ Tests should run on every PR:
 
 ### Phase 4: Link Extraction
 
-46. Write tests for link extractor Effect errors (`lib/linkExtractor.test.ts`)
+**Progress (done in this repo):**
+- [x] Step 46: Link extractor error utilities + tests (`lib/link-extractor.ts`, `lib/link-extractor.test.ts`)
+
+46. Write tests for link extractor Effect errors (`lib/link-extractor.test.ts`)
     - Test ExtractionLLMError error
     - Test ExtractionParseError error
     - Test ExtractionTimeout error
