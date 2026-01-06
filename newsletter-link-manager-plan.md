@@ -58,14 +58,15 @@ A password-protected web app that fetches emails from configured newsletter send
 | `savedAt` | number \| null | Timestamp when saved |
 | `raindropId` | string \| null | Raindrop bookmark ID |
 
-#### googleAuth
+#### oauthTokens
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `type` | string | Provider key (e.g. `google`, `raindrop`) |
 | `_id` | string | Auto-generated |
-| `accessToken` | string | Gmail API access token |
-| `refreshToken` | string | Gmail API refresh token |
-| `expiresAt` | number | Token expiration timestamp |
+| `accessToken` | string | OAuth access token |
+| `refreshToken` | string \| null | OAuth refresh token (if available) |
+| `expiresAt` | number \| null | Token expiration timestamp (if available) |
 
 ---
 
@@ -82,15 +83,19 @@ A password-protected web app that fetches emails from configured newsletter send
 ### Gmail OAuth
 
 - Google OAuth 2.0 for Gmail API access
-- Store tokens in Convex `googleAuth` table
+- Store tokens in Convex `oauthTokens` table with `type: "google"`
 - Implement token refresh flow
 - Scopes needed: `gmail.readonly`, `gmail.modify` (for marking as read)
 - Single-user app, so just one auth record
 
-### Raindrop API
+### Raindrop OAuth
 
-- API token stored in `RAINDROP_API_TOKEN` env variable
-- Used server-side only
+- Raindrop uses OAuth2 for user-authorized API access (no static API key)
+- Store tokens in Convex `oauthTokens` table with `type: "raindrop"`
+- Token endpoints (from docs):
+  - Authorize: `GET https://raindrop.io/oauth/authorize`
+  - Exchange/Refresh: `POST https://raindrop.io/oauth/access_token` (JSON body)
+- For local/manual testing only, Raindrop also provides a "Test token" in the app console; treat it like an access token (no refresh)
 
 ---
 
@@ -421,8 +426,8 @@ export const fetchFromGmail = action({
   handler: async (ctx) => {
     const program = pipe(
       withFreshToken(
-        () => ctx.runQuery(internal.googleAuth.getTokens),
-        (tokens) => ctx.runMutation(internal.googleAuth.saveTokens, tokens),
+        () => ctx.runQuery(internal.googleauth.getTokens),
+        (tokens) => ctx.runMutation(internal.googleauth.saveTokens, tokens),
         (accessToken) => fetchEmails(accessToken, senderPatterns)
       ),
       Effect.flatMap((messages) =>
@@ -540,9 +545,9 @@ describe("fetchEmails", () => {
 6. Redirect to settings with success message
 
 **Convex functions:**
-- `googleAuth.saveTokens({ accessToken, refreshToken, expiresAt })` - mutation
-- `googleAuth.getTokens()` - query
-- `googleAuth.clearTokens()` - mutation
+- `googleauth.saveTokens({ accessToken, refreshToken, expiresAt })` - mutation
+- `googleauth.getTokens()` - query
+- `googleauth.clearTokens()` - mutation
 
 **Token refresh:**
 - Before any Gmail API call, check if token expired
@@ -660,7 +665,7 @@ describe("fetchEmails", () => {
 
 **On save action:**
 1. POST to `https://api.raindrop.io/rest/v1/raindrop`
-2. Headers: `Authorization: Bearer {RAINDROP_API_TOKEN}`
+2. Headers: `Authorization: Bearer {RAINDROP_ACCESS_TOKEN}`
 3. Body:
 ```json
 {
@@ -673,6 +678,15 @@ describe("fetchEmails", () => {
 5. Update link status to "saved"
 
 Collection ID `-1` = Unsorted (default)
+
+**Getting `RAINDROP_ACCESS_TOKEN`:**
+- Use OAuth2 and store tokens in `oauthTokens` (`type: "raindrop"`)
+- Exchange code for token:
+  - `POST https://raindrop.io/oauth/access_token`
+  - JSON body: `grant_type: "authorization_code"`, `code`, `client_id`, `client_secret`, `redirect_uri`
+- Refresh (tokens expire ~2 weeks):
+  - `POST https://raindrop.io/oauth/access_token`
+  - JSON body: `grant_type: "refresh_token"`, `refresh_token`, `client_id`, `client_secret`
 
 ---
 
@@ -735,8 +749,8 @@ Collection ID `-1` = Unsorted (default)
   emails.test.ts
   links.ts                # link save/discard actions
   links.test.ts
-  googleAuth.ts           # OAuth token management
-  googleAuth.test.ts
+  googleauth.ts           # OAuth token management (stored in `oauthTokens`)
+  googleauth.test.ts
   crons.ts                # daily fetch job
 
 /lib
@@ -790,7 +804,11 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=https://your-app.vercel.app/api/auth/google/callback
 
 # Raindrop
-RAINDROP_API_TOKEN=
+RAINDROP_CLIENT_ID=
+RAINDROP_CLIENT_SECRET=
+RAINDROP_REDIRECT_URI=https://your-app.vercel.app/api/auth/raindrop/callback
+# Optional for local/manual testing only
+RAINDROP_TEST_TOKEN=
 
 # LLM (optional, defaults to gemini-2.5-flash)
 LLM_MODEL=gemini-2.5-flash

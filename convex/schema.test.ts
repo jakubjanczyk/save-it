@@ -5,7 +5,7 @@ import schema from "./schema";
 describe("convex schema", () => {
   test("exports expected tables", () => {
     expect(Object.keys(schema.tables).sort()).toEqual(
-      ["emails", "googleAuth", "links", "senders"].sort()
+      ["emails", "links", "oauthTokens", "senders"].sort()
     );
   });
 
@@ -38,6 +38,13 @@ describe("convex schema", () => {
     expect(schema.tables.links[" indexes"]()).toContainEqual({
       indexDescriptor: "by_emailId",
       fields: ["emailId"],
+    });
+  });
+
+  test("defines oauthTokens.by_type index", () => {
+    expect(schema.tables.oauthTokens[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_type",
+      fields: ["type"],
     });
   });
 });

@@ -35,9 +35,10 @@ export default defineSchema({
     raindropId: v.optional(v.string()),
   }).index("by_emailId", ["emailId"]),
 
-  googleAuth: defineTable({
+  oauthTokens: defineTable({
+    type: v.string(),
     accessToken: v.string(),
-    refreshToken: v.string(),
-    expiresAt: v.number(),
-  }),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+  }).index("by_type", ["type"]),
 });

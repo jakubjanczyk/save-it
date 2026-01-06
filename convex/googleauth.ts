@@ -2,6 +2,8 @@ import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
 
+const tokenType = "google";
+
 export const saveTokens = mutation({
   args: {
     accessToken: v.string(),
@@ -9,7 +11,10 @@ export const saveTokens = mutation({
     refreshToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const docs = await ctx.db.query("googleAuth").collect();
+    const docs = await ctx.db
+      .query("oauthTokens")
+      .withIndex("by_type", (q) => q.eq("type", tokenType))
+      .collect();
     const [doc, ...rest] = docs;
 
     for (const extra of rest) {
@@ -21,14 +26,16 @@ export const saveTokens = mutation({
         accessToken: args.accessToken,
         expiresAt: args.expiresAt,
         refreshToken: args.refreshToken,
+        type: tokenType,
       });
       return doc._id;
     }
 
-    return await ctx.db.insert("googleAuth", {
+    return await ctx.db.insert("oauthTokens", {
       accessToken: args.accessToken,
       expiresAt: args.expiresAt,
       refreshToken: args.refreshToken,
+      type: tokenType,
     });
   },
 });
@@ -36,9 +43,16 @@ export const saveTokens = mutation({
 export const getTokens = query({
   args: {},
   handler: async (ctx) => {
-    const doc = await ctx.db.query("googleAuth").first();
+    const doc = await ctx.db
+      .query("oauthTokens")
+      .withIndex("by_type", (q) => q.eq("type", tokenType))
+      .first();
 
     if (!doc) {
+      return null;
+    }
+
+    if (!(doc.refreshToken && doc.expiresAt)) {
       return null;
     }
 
@@ -53,7 +67,10 @@ export const getTokens = query({
 export const clearTokens = mutation({
   args: {},
   handler: async (ctx) => {
-    const docs = await ctx.db.query("googleAuth").collect();
+    const docs = await ctx.db
+      .query("oauthTokens")
+      .withIndex("by_type", (q) => q.eq("type", tokenType))
+      .collect();
 
     for (const doc of docs) {
       await ctx.db.delete(doc._id);
@@ -66,9 +83,12 @@ export const clearTokens = mutation({
 export const isTokenExpired = query({
   args: {},
   handler: async (ctx) => {
-    const doc = await ctx.db.query("googleAuth").first();
+    const doc = await ctx.db
+      .query("oauthTokens")
+      .withIndex("by_type", (q) => q.eq("type", tokenType))
+      .first();
 
-    if (!doc) {
+    if (!doc?.expiresAt) {
       return true;
     }
 

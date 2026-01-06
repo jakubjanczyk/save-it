@@ -13,6 +13,13 @@ interface GoogleTokens extends Record<string, unknown> {
   refreshToken: string;
 }
 
+interface OAuthTokenDoc extends Record<string, unknown> {
+  accessToken: string;
+  expiresAt?: number;
+  refreshToken?: string;
+  type: string;
+}
+
 const saveTokens: FunctionReference<
   "mutation",
   "public",
@@ -86,6 +93,20 @@ test("saveTokens stores expiresAt", async () => {
   const result = await t.query(getTokens, {});
 
   expect(result?.expiresAt).toBe(123);
+});
+
+test("saveTokens stores type google", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: 123,
+    refreshToken: "refresh",
+  });
+
+  const tokens = await t.run((ctx) => ctx.db.query("oauthTokens").collect());
+
+  expect((tokens[0] as OAuthTokenDoc | undefined)?.type).toBe("google");
 });
 
 test("clearTokens removes stored tokens", async () => {
