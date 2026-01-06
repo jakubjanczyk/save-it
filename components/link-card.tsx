@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export interface LinkCardProps {
   title: string;
@@ -27,6 +28,30 @@ export function LinkCard({
   url,
 }: LinkCardProps) {
   const actionDisabled = status !== "pending";
+
+  if (status !== "pending") {
+    return (
+      <Card>
+        <CardHeader className="gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="leading-snug line-through opacity-70">
+              {title}
+            </CardTitle>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
+                status === "saved"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  : "bg-destructive/15 text-destructive"
+              )}
+            >
+              {status === "saved" ? "Saved" : "Discarded"}
+            </span>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -52,7 +77,6 @@ export function LinkCard({
       <CardContent className="text-sm">{description}</CardContent>
       <CardFooter className="gap-2">
         <Button
-          disabled={actionDisabled}
           onClick={async () => {
             await onSave();
           }}
@@ -60,7 +84,6 @@ export function LinkCard({
           Save
         </Button>
         <Button
-          disabled={actionDisabled}
           onClick={async () => {
             await onDiscard();
           }}

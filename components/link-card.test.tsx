@@ -36,6 +36,51 @@ test("renders link description", () => {
   expect(rendered.getByText("A description")).toBeInTheDocument();
 });
 
+test("renders Saved status when status is saved", () => {
+  const rendered = render(
+    <LinkCard
+      description="A description"
+      onDiscard={() => undefined}
+      onSave={() => undefined}
+      status="saved"
+      title="A title"
+      url="https://example.com/a"
+    />
+  );
+
+  expect(rendered.getByText("Saved")).toBeInTheDocument();
+});
+
+test("renders Discarded status when status is discarded", () => {
+  const rendered = render(
+    <LinkCard
+      description="A description"
+      onDiscard={() => undefined}
+      onSave={() => undefined}
+      status="discarded"
+      title="A title"
+      url="https://example.com/a"
+    />
+  );
+
+  expect(rendered.getByText("Discarded")).toBeInTheDocument();
+});
+
+test("hides actions when status is not pending", () => {
+  const rendered = render(
+    <LinkCard
+      description="A description"
+      onDiscard={() => undefined}
+      onSave={() => undefined}
+      status="discarded"
+      title="A title"
+      url="https://example.com/a"
+    />
+  );
+
+  expect(rendered.queryByRole("button", { name: "Save" })).toBeNull();
+});
+
 test("calls onSave when Save is clicked", async () => {
   const onSave = vi.fn();
   const user = userEvent.setup();
@@ -89,7 +134,7 @@ test("renders an open link anchor", () => {
   );
 });
 
-test("disables actions when status is not pending", () => {
+test("hides open link when status is not pending", () => {
   const rendered = render(
     <LinkCard
       description="A description"
@@ -101,5 +146,5 @@ test("disables actions when status is not pending", () => {
     />
   );
 
-  expect(rendered.getByRole("button", { name: "Save" })).toBeDisabled();
+  expect(rendered.queryByRole("link", { name: "Open" })).toBeNull();
 });

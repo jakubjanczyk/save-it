@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useParams } from "next/navigation";
+import { toast } from "sonner";
 
 import { EmailDetailView } from "@/components/email-detail-view";
 import { LinkList } from "@/components/link-list";
@@ -13,6 +14,7 @@ import {
   discardLink,
   listLinksByEmail,
   listWithPendingLinks,
+  saveLink,
 } from "../../home-convex-refs";
 
 function getEmailIdParam(param: unknown): GenericId<"emails"> | null {
@@ -30,6 +32,7 @@ export function EmailDetailClient() {
   const emails = useQuery(listWithPendingLinks, {});
   const links = useQuery(listLinksByEmail, emailId ? { emailId } : "skip");
   const discard = useMutation(discardLink);
+  const save = useAction(saveLink);
 
   if (!emailId) {
     return (
@@ -120,7 +123,14 @@ export function EmailDetailClient() {
       onDiscardLink={async (linkId) => {
         await discard({ linkId: linkId as GenericId<"links"> });
       }}
-      onSaveLink={() => undefined}
+      onSaveLink={async (linkId) => {
+        try {
+          await save({ linkId: linkId as GenericId<"links"> });
+          toast.success("Saved to Raindrop.");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Save failed");
+        }
+      }}
       prevHref={prevEmailId ? `/emails/${prevEmailId}` : undefined}
     />
   );

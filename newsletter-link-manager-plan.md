@@ -1439,6 +1439,10 @@ Tests should run on every PR:
 
 ### Phase 8: Raindrop Integration
 
+**Progress (done in this repo):**
+- [x] Steps 89–91: Raindrop Effect helper + tests (`lib/raindrop.ts`, `lib/raindrop.test.ts`)
+- [x] Steps 92–94: `links.save` action + tests + UI wiring (`convex/links.ts`, `convex/links.test.ts`, `app/(app)/emails/[emailId]/page-client.tsx`)
+
 89. Write tests for Raindrop Effect errors (`lib/raindrop.test.ts`)
     - Test RaindropAuthError error mapping
     - Test RaindropRateLimited error mapping

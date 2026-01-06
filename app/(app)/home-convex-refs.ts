@@ -50,3 +50,10 @@ export const discardLink: FunctionReference<
   { linkId: GenericId<"links"> },
   null
 > = makeFunctionReference("links:discard");
+
+export const saveLink: FunctionReference<
+  "action",
+  "public",
+  { linkId: GenericId<"links"> },
+  { raindropId: string | null }
+> = makeFunctionReference("links:save");

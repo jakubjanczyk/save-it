@@ -20,6 +20,38 @@ test("shows empty state when there are no links", () => {
   expect(rendered.getByText("No links pending.")).toBeInTheDocument();
 });
 
+test("renders pending links before actioned links", () => {
+  const rendered = render(
+    <LinkList
+      links={[
+        {
+          description: "Saved desc",
+          id: "l1",
+          status: "saved",
+          title: "Saved title",
+          url: "https://example.com/saved",
+        },
+        {
+          description: "Pending desc",
+          id: "l2",
+          status: "pending",
+          title: "Pending title",
+          url: "https://example.com/pending",
+        },
+      ]}
+      onDiscardLink={() => undefined}
+      onSaveLink={() => undefined}
+    />
+  );
+
+  const pendingTitle = rendered.getByText("Pending title");
+  const savedTitle = rendered.getByText("Saved title");
+
+  expect(pendingTitle.compareDocumentPosition(savedTitle)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING
+  );
+});
+
 test("shows loading state when loading is true", () => {
   const rendered = render(
     <LinkList

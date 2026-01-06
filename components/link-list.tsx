@@ -96,6 +96,18 @@ export function LinkList({
     );
   }
 
+  const sortedLinks = [...links].sort((a, b) => {
+    const rank = (status: LinkListItem["status"]) =>
+      status === "pending" ? 0 : 1;
+
+    const rankDiff = rank(a.status) - rank(b.status);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+
+    return a.status.localeCompare(b.status);
+  });
+
   return (
     <div className="grid gap-4">
       {extractionError ? (
@@ -104,11 +116,11 @@ export function LinkList({
         </div>
       ) : null}
 
-      {links.length === 0 ? (
+      {sortedLinks.length === 0 ? (
         <p className="text-muted-foreground text-sm">No links pending.</p>
       ) : (
         <div className="grid gap-4">
-          {links.map((link) => (
+          {sortedLinks.map((link) => (
             <LinkCard
               description={link.description}
               key={link.id}
