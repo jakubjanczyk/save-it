@@ -4,8 +4,17 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { FetchEmailsCard } from "./fetch-emails-card";
 
+const toastSuccessMock = vi.fn();
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+  },
+}));
+
 afterEach(() => {
   cleanup();
+  toastSuccessMock.mockReset();
 });
 
 test("calls onFetch when Fetch new emails is clicked", async () => {
@@ -18,6 +27,19 @@ test("calls onFetch when Fetch new emails is clicked", async () => {
   expect(onFetch).toHaveBeenCalledOnce();
 });
 
+test("uses singular email when fetched=1", async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <FetchEmailsCard onFetch={async () => ({ fetched: 1 })} />
+  );
+
+  await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
+
+  await waitFor(() => {
+    expect(toastSuccessMock).toHaveBeenCalledWith("Fetched 1 new email.");
+  });
+});
+
 test("disables Fetch new emails button while loading", async () => {
   const onFetch = () => new Promise<{ fetched: number }>(() => undefined);
   const user = userEvent.setup();
@@ -28,7 +50,7 @@ test("disables Fetch new emails button while loading", async () => {
   expect(rendered.getByRole("button", { name: "Fetching…" })).toBeDisabled();
 });
 
-test("shows fetched count after a successful fetch", async () => {
+test("shows toast after a successful fetch", async () => {
   const user = userEvent.setup();
   const rendered = render(
     <FetchEmailsCard onFetch={async () => ({ fetched: 2 })} />
@@ -37,7 +59,7 @@ test("shows fetched count after a successful fetch", async () => {
   await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
 
   await waitFor(() => {
-    expect(rendered.getByText("Fetched 2 new emails.")).toBeInTheDocument();
+    expect(toastSuccessMock).toHaveBeenCalledWith("Fetched 2 new emails.");
   });
 });
 

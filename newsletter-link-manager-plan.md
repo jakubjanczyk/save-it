@@ -1304,6 +1304,7 @@ Tests should run on every PR:
 - [x] Steps 54–55: Emails Convex functions + tests (`convex/emails.ts`, `convex/emails.test.ts`)
 - [x] Step 49: AI SDK wiring (`lib/ai.ts`, `lib/ai.test.ts`)
 - [x] Step 56: "Fetch emails" button on Home (`app/(app)/page.tsx`, `app/(app)/home-client.tsx`, `components/fetch-emails-card.tsx`, `components/fetch-emails-card.test.tsx`)
+- [x] Step 57: Test full fetch flow including error cases (manual)
 
 46. Write tests for link extractor Effect errors (`lib/link-extractor.test.ts`)
     - Test ExtractionLLMError error
@@ -1333,6 +1334,22 @@ Tests should run on every PR:
 57. Test full fetch flow including error cases
 
 ### Phase 5: Triage UI - List View
+
+**Progress (done in this repo):**
+- [x] Step 58: `EmailList` tests (colocated)
+- [x] Step 59: `EmailList` component
+- [x] Step 60: `LinkCard` tests (colocated)
+- [x] Step 61: `LinkCard` component
+- [x] Step 62: `LinkList` tests (colocated)
+- [x] Step 63: `LinkList` component
+- [x] Step 64: Links Convex tests (colocated, `convex-test`)
+- [x] Step 65: Links Convex functions (`convex/links.ts`)
+- [x] Step 66: Wire up discard button (Home list view)
+- [x] Step 67: Visual feedback for actioned links (disable actions + strike-through)
+- [x] Step 68: `ListView` tests (colocated)
+- [x] Step 69: `ListView` component
+- [x] Step 70: E2E list view triage spec (`e2e/triage-list.spec.ts`)
+- [x] Inbox → email detail navigation uses `?emailId=` (refresh restores state), with prev/next arrows
 
 58. Write tests for `EmailList` component
     - Test empty state
