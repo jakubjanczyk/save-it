@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { GmailConnectionCard } from "@/components/gmail-connection-card";
+import { RaindropConnectionCard } from "@/components/raindrop-connection-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +36,7 @@ export default function SettingsPage() {
       </Card>
 
       <GmailConnectionCard />
+      <RaindropConnectionCard />
     </div>
   );
 }
