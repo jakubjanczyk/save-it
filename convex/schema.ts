@@ -24,6 +24,7 @@ export default defineSchema({
   links: defineTable({
     emailId: v.id("emails"),
     url: v.string(),
+    title: v.string(),
     description: v.string(),
     status: v.union(
       v.literal("pending"),

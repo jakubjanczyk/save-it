@@ -19,6 +19,14 @@ export interface GmailMessage {
   threadId?: string;
 }
 
+export interface GmailFullMessage {
+  from: string;
+  gmailId: string;
+  html: string;
+  receivedAt: number;
+  subject: string;
+}
+
 export interface StoredTokens {
   accessToken: string;
   expiresAt: number;
@@ -171,6 +179,18 @@ function isGmailRateLimitedError(error: unknown): boolean {
   );
 }
 
+function createRateLimitRetrySchedule(options?: GmailOptions) {
+  const retryBase: Duration.DurationInput = options?.retryBase ?? "1 second";
+  const retryFactor = options?.retryFactor ?? 2;
+  const retryMaxRetries = options?.retryMaxRetries ?? 3;
+
+  return pipe(
+    Schedule.exponential(retryBase, retryFactor),
+    Schedule.intersect(Schedule.recurs(retryMaxRetries)),
+    Schedule.whileInput(isGmailRateLimitedError)
+  );
+}
+
 export function fetchEmails(
   accessToken: string,
   senderPatterns: readonly string[],
@@ -178,15 +198,7 @@ export function fetchEmails(
 ) {
   const fetcher = getFetcher(options);
   const baseUrl = getBaseUrl(options);
-  const retryBase: Duration.DurationInput = options?.retryBase ?? "1 second";
-  const retryFactor = options?.retryFactor ?? 2;
-  const retryMaxRetries = options?.retryMaxRetries ?? 3;
-
-  const retrySchedule = pipe(
-    Schedule.exponential(retryBase, retryFactor),
-    Schedule.intersect(Schedule.recurs(retryMaxRetries)),
-    Schedule.whileInput(isGmailRateLimitedError)
-  );
+  const retrySchedule = createRateLimitRetrySchedule(options);
 
   const listUrl = new URL("/gmail/v1/users/me/messages", baseUrl);
   listUrl.searchParams.set("q", buildGmailQuery(senderPatterns));
@@ -214,6 +226,147 @@ function mapMarkAsReadError(messageId: string, error: unknown) {
   }
 
   return mapGmailError(error);
+}
+
+interface GmailMessagePayloadPart {
+  body?: {
+    data?: string;
+  };
+  mimeType?: string;
+  parts?: GmailMessagePayloadPart[];
+}
+
+interface GmailMessageResponse {
+  id?: string;
+  internalDate?: string;
+  payload?: {
+    body?: { data?: string };
+    headers?: Array<{ name?: string; value?: string }>;
+    parts?: GmailMessagePayloadPart[];
+  };
+}
+
+function decodeBase64Url(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(padded, "base64").toString("utf-8");
+  }
+
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function getHeaderValue(
+  headers: Array<{ name?: string; value?: string }>,
+  name: string
+) {
+  const lower = name.toLowerCase();
+  return (
+    headers.find((header) => header.name?.toLowerCase() === lower)?.value ??
+    null
+  );
+}
+
+function findHtmlBodyData(part: GmailMessagePayloadPart): string | null {
+  const mimeType = part.mimeType?.toLowerCase();
+  if (mimeType === "text/html" && typeof part.body?.data === "string") {
+    return part.body.data;
+  }
+
+  for (const child of part.parts ?? []) {
+    const found = findHtmlBodyData(child);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function parseFullMessage(response: unknown): GmailFullMessage | null {
+  if (!isRecord(response)) {
+    return null;
+  }
+
+  const data = response as GmailMessageResponse;
+  const id = data.id;
+  const internalDate = data.internalDate;
+  const headers = data.payload?.headers ?? [];
+
+  if (typeof id !== "string") {
+    return null;
+  }
+
+  const from = getHeaderValue(headers, "From") ?? "";
+  const subject = getHeaderValue(headers, "Subject") ?? "";
+  const receivedAt = Number.parseInt(internalDate ?? "", 10);
+
+  let html = "";
+  const rootHtml = data.payload?.body?.data;
+  if (typeof rootHtml === "string") {
+    html = decodeBase64Url(rootHtml);
+  } else {
+    for (const part of data.payload?.parts ?? []) {
+      const bodyData = findHtmlBodyData(part);
+      if (bodyData) {
+        html = decodeBase64Url(bodyData);
+        break;
+      }
+    }
+  }
+
+  return {
+    from,
+    gmailId: id,
+    html,
+    receivedAt: Number.isFinite(receivedAt) ? receivedAt : Date.now(),
+    subject,
+  };
+}
+
+function mapGetMessageError(messageId: string, error: unknown) {
+  const httpError = parseHttpError(error);
+
+  if (httpError?.status === 404) {
+    return new GmailMessageNotFound({ messageId });
+  }
+
+  return mapGmailError(error);
+}
+
+export function fetchMessageFull(
+  accessToken: string,
+  messageId: string,
+  options?: GmailOptions
+) {
+  const fetcher = getFetcher(options);
+  const baseUrl = getBaseUrl(options);
+  const retrySchedule = createRateLimitRetrySchedule(options);
+
+  const url = new URL(`/gmail/v1/users/me/messages/${messageId}`, baseUrl);
+  url.searchParams.set("format", "full");
+
+  const request = Effect.tryPromise({
+    try: async () => {
+      const json = await fetchJson(fetcher, url.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        method: "GET",
+      });
+
+      const parsed = parseFullMessage(json);
+      if (!parsed) {
+        throw new Error("Invalid Gmail message response");
+      }
+
+      return parsed;
+    },
+    catch: (error) => mapGetMessageError(messageId, error),
+  });
+
+  return pipe(request, Effect.retry(retrySchedule));
 }
 
 export function markAsRead(

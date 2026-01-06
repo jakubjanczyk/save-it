@@ -83,6 +83,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Use early returns to reduce nesting
 - Prefer simple conditionals over nested ternary operators
 - Group related code together and separate concerns
+- Keep external API layers centralized (e.g. all Gmail API HTTP calls live in `lib/gmail.ts`)
 
 ### Security
 

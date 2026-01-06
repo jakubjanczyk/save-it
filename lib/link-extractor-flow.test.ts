@@ -16,14 +16,20 @@ test("extractLinks returns Substack link and skips LLM when Substack shortcut ma
   );
 
   expect(result).toEqual([
-    { description: "Hello", url: "https://substack.com/app-link/post/abc" },
+    {
+      description: "Hello",
+      title: "Hello",
+      url: "https://substack.com/app-link/post/abc",
+    },
   ]);
   expect(llmExtract).not.toHaveBeenCalled();
 });
 
 test("extractLinks falls back to LLM when Substack sender has no link", async () => {
   const llmExtract = vi.fn(() =>
-    Effect.succeed([{ description: "A", url: "https://example.com/a" }])
+    Effect.succeed([
+      { description: "A", title: "A title", url: "https://example.com/a" },
+    ])
   );
 
   const result = await Effect.runPromise(
@@ -32,13 +38,17 @@ test("extractLinks falls back to LLM when Substack sender has no link", async ()
     })
   );
 
-  expect(result).toEqual([{ description: "A", url: "https://example.com/a" }]);
+  expect(result).toEqual([
+    { description: "A", title: "A title", url: "https://example.com/a" },
+  ]);
   expect(llmExtract).toHaveBeenCalledTimes(1);
 });
 
 test("extractLinks falls back to LLM when sender is not Substack", async () => {
   const llmExtract = vi.fn(() =>
-    Effect.succeed([{ description: "A", url: "https://example.com/a" }])
+    Effect.succeed([
+      { description: "A", title: "A title", url: "https://example.com/a" },
+    ])
   );
 
   const result = await Effect.runPromise(
@@ -47,6 +57,8 @@ test("extractLinks falls back to LLM when sender is not Substack", async () => {
     })
   );
 
-  expect(result).toEqual([{ description: "A", url: "https://example.com/a" }]);
+  expect(result).toEqual([
+    { description: "A", title: "A title", url: "https://example.com/a" },
+  ]);
   expect(llmExtract).toHaveBeenCalledTimes(1);
 });

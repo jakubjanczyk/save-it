@@ -18,8 +18,8 @@ test("llmExtractLinks returns links on success", async () => {
   generateTextMock.mockResolvedValue({
     output: {
       links: [
-        { description: "A", url: "https://example.com/a" },
-        { description: "B", url: "https://example.com/b" },
+        { description: "A", title: "A title", url: "https://example.com/a" },
+        { description: "B", title: "B title", url: "https://example.com/b" },
       ],
     },
   });
@@ -32,9 +32,35 @@ test("llmExtractLinks returns links on success", async () => {
   );
 
   expect(result).toEqual([
-    { description: "A", url: "https://example.com/a" },
-    { description: "B", url: "https://example.com/b" },
+    { description: "A", title: "A title", url: "https://example.com/a" },
+    { description: "B", title: "B title", url: "https://example.com/b" },
   ]);
+});
+
+test("llmExtractLinks strips newsletter HTML before sending to the model", async () => {
+  generateTextMock.mockResolvedValue({ output: { links: [] } });
+
+  await Effect.runPromise(
+    llmExtractLinks(
+      `<script>alert("x")</script><p><a href="https://example.com/a">Read</a></p>`,
+      {
+        model: {} as LlmModel,
+        timeoutMs: 10,
+      }
+    )
+  );
+
+  const call = generateTextMock.mock.calls[0]?.[0] as
+    | { prompt?: unknown }
+    | undefined;
+
+  expect(typeof call?.prompt).toBe("string");
+  if (typeof call?.prompt !== "string") {
+    throw new Error("Expected prompt");
+  }
+
+  expect(call.prompt.includes('alert("x")')).toBe(false);
+  expect(call.prompt.includes("[Read](https://example.com/a)")).toBe(true);
 });
 
 test("llmExtractLinks maps generic failures to ExtractionLLMError", async () => {
@@ -81,10 +107,22 @@ test("llmExtractLinks maps parse failures to ExtractionParseError", async () => 
 
 test("llmExtractLinks fails with ExtractionTimeout when it exceeds timeout", async () => {
   generateTextMock.mockImplementation(
-    () =>
-      new Promise((resolve) =>
-        setTimeout(() => resolve({ output: { links: [] } }), 10)
-      )
+    (args: unknown) =>
+      new Promise((resolve, reject) => {
+        const abortSignal = (args as { abortSignal?: AbortSignal }).abortSignal;
+        const timer = setTimeout(() => resolve({ output: { links: [] } }), 10);
+
+        abortSignal?.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(timer);
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          },
+          { once: true }
+        );
+      })
   );
 
   const exit = await Effect.runPromiseExit(

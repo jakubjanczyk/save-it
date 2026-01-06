@@ -2,6 +2,7 @@ import { Effect } from "effect";
 
 export interface DetectedLink {
   description: string;
+  title: string;
   url: string;
 }
 
@@ -32,6 +33,6 @@ export function checkSubstackPattern(
       return Effect.fail("no substack link found" as const);
     }
 
-    return Effect.succeed([{ description: subject, url }]);
+    return Effect.succeed([{ description: subject, title: subject, url }]);
   }).pipe(Effect.flatten);
 }

@@ -3,8 +3,12 @@ import { Effect } from "effect";
 import { ZodError, z } from "zod";
 
 import { createGeminiModel, type Env } from "./ai";
-import { ExtractionLLMError, ExtractionParseError } from "./errors";
-import { withExtractionTimeout } from "./link-extractor";
+import {
+  ExtractionLLMError,
+  ExtractionParseError,
+  ExtractionTimeout,
+} from "./errors";
+import { stripNewsletterHtmlForLlm } from "./newsletter-html";
 
 export type LlmModel = Parameters<typeof generateText>[0]["model"];
 
@@ -12,6 +16,7 @@ const extractedLinksSchema = z.object({
   links: z.array(
     z.object({
       description: z.string(),
+      title: z.string(),
       url: z.url(),
     })
   ),
@@ -33,12 +38,13 @@ Ignore and exclude:
 
 For each content link found, provide:
 - url: the full href URL
+- title: the original link title / label shown in the email (anchor text). If unavailable, use the URL.
 - description: 1-2 sentences describing what this link is about, based on surrounding context in the email
 
 Return as JSON:
 {
   "links": [
-    { "url": "https://example.com/article", "description": "An article about..." }
+    { "url": "https://example.com/article", "title": "Article title", "description": "An article about..." }
   ]
 }
 
@@ -46,6 +52,7 @@ If no content links are found, return: { "links": [] }`;
 
 export interface ExtractedLink {
   description: string;
+  title: string;
   url: string;
 }
 
@@ -82,6 +89,14 @@ function mapLlmExtractionError(cause: unknown) {
   });
 }
 
+function isAbortError(cause: unknown): boolean {
+  if (typeof cause !== "object" || cause === null) {
+    return false;
+  }
+
+  return (cause as { name?: unknown }).name === "AbortError";
+}
+
 export function llmExtractLinks(
   html: string,
   options?: {
@@ -90,18 +105,43 @@ export function llmExtractLinks(
     timeoutMs?: number;
   }
 ) {
+  const stripped = stripNewsletterHtmlForLlm(html);
+  const prompt = `${extractionPrompt}\n\n${stripped}`;
+  const timeoutMs = options?.timeoutMs ?? 90_000;
+
   const request = Effect.tryPromise({
     try: async () => {
-      const { output } = await generateText({
-        model: options?.model ?? createGeminiModel(options?.env),
-        output: Output.object({ schema: extractedLinksSchema }),
-        prompt: `${extractionPrompt}\n\n${html}`,
-      });
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), timeoutMs);
 
-      return output.links satisfies ExtractedLink[];
+      try {
+        const { output } = await generateText({
+          model: options?.model ?? createGeminiModel(options?.env),
+          output: Output.object({ schema: extractedLinksSchema }),
+          prompt,
+          abortSignal: abortController.signal,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                thinkingBudget: 0, // Setting the budget to 0 disables thinking
+              },
+            },
+          },
+        });
+
+        return output.links satisfies ExtractedLink[];
+      } finally {
+        clearTimeout(timeout);
+      }
     },
-    catch: mapLlmExtractionError,
+    catch: (cause) => {
+      if (isAbortError(cause)) {
+        return new ExtractionTimeout({ timeoutMs });
+      }
+
+      return mapLlmExtractionError(cause);
+    },
   });
 
-  return withExtractionTimeout(request, options?.timeoutMs ?? 30_000);
+  return request;
 }

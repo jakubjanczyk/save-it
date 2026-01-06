@@ -3,7 +3,7 @@ import { google } from "@ai-sdk/google";
 export type Env = Record<string, string | undefined>;
 
 export function getLlmModelName(env: Env = process.env) {
-  return env.LLM_MODEL ?? "gemini-3-flash";
+  return env.LLM_MODEL ?? "gemini-2.5-flash";
 }
 
 export function requireGoogleGenerativeAiApiKey(env: Env = process.env) {

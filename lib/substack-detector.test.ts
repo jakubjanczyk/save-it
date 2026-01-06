@@ -46,7 +46,11 @@ describe("checkSubstackPattern", () => {
     );
 
     expect(result).toEqual([
-      { description: "Hello", url: "https://substack.com/app-link/post/abc" },
+      {
+        description: "Hello",
+        title: "Hello",
+        url: "https://substack.com/app-link/post/abc",
+      },
     ]);
   });
 });

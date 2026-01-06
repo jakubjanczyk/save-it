@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 
 import {
   fetchEmails,
+  fetchMessageFull,
   mapGmailError,
   markAsRead,
   withFreshToken,
@@ -134,6 +135,51 @@ test("markAsRead completes on success", async () => {
     );
 
   await Effect.runPromise(markAsRead("token", "m1", { fetcher }));
+});
+
+test("fetchMessageFull returns parsed html for a text/html part", async () => {
+  const html = "<p>Hello</p>";
+
+  const fetcher = () =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          id: "m1",
+          internalDate: "1700000000000",
+          payload: {
+            headers: [
+              { name: "From", value: "newsletter@example.com" },
+              { name: "Subject", value: "Hi" },
+            ],
+            parts: [
+              {
+                body: { data: Buffer.from(html).toString("base64url") },
+                mimeType: "text/html",
+              },
+            ],
+          },
+        }),
+        {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }
+      )
+    );
+
+  const result = await Effect.runPromise(
+    fetchMessageFull("token", "m1", {
+      fetcher,
+      baseUrl: "https://example.test",
+    })
+  );
+
+  expect(result).toEqual({
+    from: "newsletter@example.com",
+    gmailId: "m1",
+    html,
+    receivedAt: 1_700_000_000_000,
+    subject: "Hi",
+  });
 });
 
 test("withFreshToken uses refreshed token when expired", async () => {

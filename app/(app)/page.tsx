@@ -1,6 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { HomeClient } from "./home-client";
+
 export default function HomePage() {
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <div>
@@ -9,6 +13,21 @@ export default function HomePage() {
           This is a placeholder dashboard for now.
         </p>
       </div>
+
+      {convexUrl ? (
+        <HomeClient />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Missing configuration</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground text-sm">
+            Set{" "}
+            <code className="font-mono text-xs">NEXT_PUBLIC_CONVEX_URL</code> to
+            enable email fetching.
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

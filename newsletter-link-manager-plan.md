@@ -52,6 +52,7 @@ A password-protected web app that fetches emails from configured newsletter send
 | `_id` | string | Auto-generated |
 | `emailId` | Id<"emails"> | Reference to parent email |
 | `url` | string | The link URL |
+| `title` | string | Link title (anchor text) |
 | `description` | string | LLM-extracted context |
 | `status` | "pending" \| "saved" \| "discarded" | Current state |
 | `savedAt` | number \| null | Timestamp when saved |
@@ -132,12 +133,13 @@ Ignore and exclude:
 
 For each content link found, provide:
 - url: the full href URL
+- title: the original link title / label shown in the email (anchor text). If unavailable, use the URL.
 - description: 1-2 sentences describing what this link is about, based on surrounding context in the email
 
 Return as JSON:
 {
   "links": [
-    { "url": "https://example.com/article", "description": "An article about..." }
+    { "url": "https://example.com/article", "title": "Article title", "description": "An article about..." }
   ]
 }
 
@@ -145,7 +147,7 @@ If no content links are found, return: { "links": [] }
 ```
 
 **Model configuration:**
-- Default: Gemini 3 Flash (`gemini-3-flash`)
+- Default: Gemini 2.5 Flash (`gemini-2.5-flash`)
 - Configurable via `LLM_MODEL` env variable
 - Use AI SDK `generateText` with `Output.object` for structured output
 
@@ -663,7 +665,7 @@ describe("fetchEmails", () => {
 ```json
 {
   "link": "https://example.com/article",
-  "title": "Description from LLM extraction",
+  "title": "Link title from newsletter",
   "collection": { "$id": -1 }
 }
 ```
@@ -790,8 +792,8 @@ GOOGLE_REDIRECT_URI=https://your-app.vercel.app/api/auth/google/callback
 # Raindrop
 RAINDROP_API_TOKEN=
 
-# LLM (optional, defaults to gemini-3-flash)
-LLM_MODEL=gemini-3-flash
+# LLM (optional, defaults to gemini-2.5-flash)
+LLM_MODEL=gemini-2.5-flash
 GOOGLE_GENERATIVE_AI_API_KEY=
 
 # Convex
@@ -1274,6 +1276,7 @@ Tests should run on every PR:
     - Test GmailNetworkError error mapping
 37. Write tests for Gmail API helpers with Effect (`lib/gmail.test.ts`)
     - Test fetchEmails success case
+    - Test fetchMessageFull success case
     - Test fetchEmails with expired token
     - Test fetchEmails with rate limit (retry behavior)
     - Test markAsRead success case
@@ -1298,7 +1301,9 @@ Tests should run on every PR:
 - [x] Steps 47–48: Substack detector + tests (`lib/substack-detector.ts`, `lib/substack-detector.test.ts`)
 - [x] Steps 50–51: LLM extractor + tests (`lib/llm-extractor.ts`, `lib/llm-extractor.test.ts`)
 - [x] Steps 52–53: Full link extractor + tests (`lib/link-extractor.ts`, `lib/link-extractor-flow.test.ts`)
+- [x] Steps 54–55: Emails Convex functions + tests (`convex/emails.ts`, `convex/emails.test.ts`)
 - [x] Step 49: AI SDK wiring (`lib/ai.ts`, `lib/ai.test.ts`)
+- [x] Step 56: "Fetch emails" button on Home (`app/(app)/page.tsx`, `app/(app)/home-client.tsx`, `components/fetch-emails-card.tsx`, `components/fetch-emails-card.test.tsx`)
 
 46. Write tests for link extractor Effect errors (`lib/link-extractor.test.ts`)
     - Test ExtractionLLMError error
@@ -1490,7 +1495,7 @@ POST https://api.raindrop.io/rest/v1/raindrop
 Headers: Authorization: Bearer {token}
 Body: {
   "link": "https://example.com",
-  "title": "Description",
+  "title": "Link title",
   "collection": { "$id": -1 }
 }
 ```
@@ -1501,17 +1506,18 @@ Body: {
 
 ```typescript
 import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-const { object } = await generateObject({
-  model: google('gemini-3-flash'),
-  schema: z.object({
+const { output } = await generateText({
+  model: google('gemini-2.5-flash'),
+  output: Output.object({ schema: z.object({
     links: z.array(z.object({
-      url: z.string(),
+      url: z.url(),
+      title: z.string(),
       description: z.string(),
     })),
-  }),
+  }) }),
   prompt: `Extract content links from this newsletter...`,
 });
 ```

@@ -7,8 +7,8 @@ import {
   requireGoogleGenerativeAiApiKey,
 } from "./ai";
 
-test("getLlmModelName defaults to gemini-3-flash", () => {
-  expect(getLlmModelName({} satisfies Env)).toBe("gemini-3-flash");
+test("getLlmModelName defaults to gemini-2.5-flash", () => {
+  expect(getLlmModelName({} satisfies Env)).toBe("gemini-2.5-flash");
 });
 
 test("getLlmModelName reads LLM_MODEL", () => {

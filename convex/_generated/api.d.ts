@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as emails from "../emails.js";
 import type * as googleauth from "../googleauth.js";
 import type * as senders from "../senders.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  emails: typeof emails;
   googleauth: typeof googleauth;
   senders: typeof senders;
 }>;
