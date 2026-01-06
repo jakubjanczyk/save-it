@@ -2,7 +2,7 @@
 
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { EmailDetailView } from "@/components/email-detail-view";
@@ -14,6 +14,7 @@ import {
   discardLink,
   listLinksByEmail,
   listWithPendingLinks,
+  markEmailAsRead,
   saveLink,
 } from "../../home-convex-refs";
 
@@ -27,12 +28,14 @@ function getEmailIdParam(param: unknown): GenericId<"emails"> | null {
 
 export function EmailDetailClient() {
   const params = useParams();
+  const router = useRouter();
   const emailId = getEmailIdParam(params.emailId);
 
   const emails = useQuery(listWithPendingLinks, {});
   const links = useQuery(listLinksByEmail, emailId ? { emailId } : "skip");
   const discard = useMutation(discardLink);
   const save = useAction(saveLink);
+  const markAsRead = useAction(markEmailAsRead);
 
   if (!emailId) {
     return (
@@ -122,6 +125,22 @@ export function EmailDetailClient() {
       nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
       onDiscardLink={async (linkId) => {
         await discard({ linkId: linkId as GenericId<"links"> });
+      }}
+      onMarkAsRead={async () => {
+        try {
+          const result = await markAsRead({
+            emailId: emailId as GenericId<"emails">,
+          });
+          toast.success(
+            `Marked as read.${result.discarded > 0 ? ` Discarded ${result.discarded} pending ${result.discarded === 1 ? "link" : "links"}.` : ""}`
+          );
+          router.push("/");
+          router.refresh();
+        } catch (error) {
+          toast.error(
+            error instanceof Error ? error.message : "Mark as read failed"
+          );
+        }
       }}
       onSaveLink={async (linkId) => {
         try {

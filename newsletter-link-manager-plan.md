@@ -1465,6 +1465,9 @@ Tests should run on every PR:
 
 ### Phase 9: Email Completion
 
+**Progress (done in this repo):**
+- [x] Steps 97–100: `emails.markAsRead` action + tests + UI wiring; hide marked-as-read emails (`convex/emails.ts`, `convex/emails.test.ts`, `components/email-detail-view.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
+
 97. Write tests for emails.markAsRead action (`convex/emails.test.ts`)
     - Test pending links discarded
     - Test Gmail API called (via Effect)

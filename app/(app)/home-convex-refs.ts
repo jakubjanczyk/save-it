@@ -37,6 +37,13 @@ export const listWithPendingLinks: FunctionReference<
   EmailListItem[]
 > = makeFunctionReference("emails:listWithPendingLinks");
 
+export const markEmailAsRead: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+> = makeFunctionReference("emails:markAsRead");
+
 export const listLinksByEmail: FunctionReference<
   "query",
   "public",

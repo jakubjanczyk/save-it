@@ -6,13 +6,19 @@ import {
   fetchEmails,
   fetchMessageFull,
   type GmailFullMessage,
+  markAsRead as markGmailAsRead,
   type StoredTokens,
   withFreshToken,
 } from "../lib/gmail";
 import { refreshGoogleAccessToken } from "../lib/google-oauth";
 import { extractLinks } from "../lib/link-extractor";
 
-import { action, internalMutation, query } from "./_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  query,
+} from "./_generated/server";
 
 const angleEmailRegex = /<([^>]+)>/;
 const tokenEmailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
@@ -76,6 +82,37 @@ const storeLinksRef = makeFunctionReference(
     emailId: GenericId<"emails">;
     links: Array<{ description: string; title: string; url: string }>;
   },
+  null
+>;
+
+const getEmailRef = makeFunctionReference(
+  "emails:getEmail"
+) as unknown as FunctionReference<
+  "query",
+  "internal",
+  { emailId: GenericId<"emails"> },
+  {
+    _id: GenericId<"emails">;
+    gmailId: string;
+    markedAsRead: boolean;
+  } | null
+>;
+
+const discardPendingLinksRef = makeFunctionReference(
+  "emails:discardPendingLinks"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+>;
+
+const markEmailAsReadRef = makeFunctionReference(
+  "emails:markEmailAsRead"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { emailId: GenericId<"emails">; processedAt: number },
   null
 >;
 
@@ -364,6 +401,10 @@ export const listWithPendingLinks = query({
     }> = [];
 
     for (const email of emails) {
+      if (email.markedAsRead) {
+        continue;
+      }
+
       const pendingLinks = await ctx.db
         .query("links")
         .withIndex("by_emailId", (q) => q.eq("emailId", email._id))
@@ -389,5 +430,123 @@ export const listWithPendingLinks = query({
 
     results.sort((a, b) => b.receivedAt - a.receivedAt);
     return results;
+  },
+});
+
+export const getEmail = internalQuery({
+  args: { emailId: v.id("emails") },
+  handler: async (ctx, args) => {
+    const email = await ctx.db.get(args.emailId);
+    if (!email) {
+      return null;
+    }
+
+    return {
+      _id: email._id,
+      gmailId: email.gmailId,
+      markedAsRead: email.markedAsRead,
+    };
+  },
+});
+
+export const discardPendingLinks = internalMutation({
+  args: { emailId: v.id("emails") },
+  handler: async (ctx, args) => {
+    const pendingLinks = await ctx.db
+      .query("links")
+      .withIndex("by_emailId", (q) => q.eq("emailId", args.emailId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    for (const link of pendingLinks) {
+      await ctx.db.patch(link._id, { status: "discarded" });
+    }
+
+    return { discarded: pendingLinks.length };
+  },
+});
+
+export const markEmailAsRead = internalMutation({
+  args: { emailId: v.id("emails"), processedAt: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.emailId, {
+      markedAsRead: true,
+      processedAt: args.processedAt,
+    });
+
+    return null;
+  },
+});
+
+export const markAsRead = action({
+  args: { emailId: v.id("emails") },
+  handler: async (ctx, args) => {
+    const email = await ctx.runQuery(getEmailRef, {
+      emailId: args.emailId as GenericId<"emails">,
+    });
+
+    if (!email) {
+      throw new Error("Email not found");
+    }
+
+    if (email.markedAsRead) {
+      return { discarded: 0 };
+    }
+
+    const loadTokens = async (): Promise<StoredTokens> => {
+      const tokens = await ctx.runQuery(getTokens, {});
+      if (!tokens) {
+        throw new Error("Gmail not connected");
+      }
+      return {
+        accessToken: tokens.accessToken,
+        expiresAt: tokens.expiresAt,
+        refreshToken: tokens.refreshToken,
+      };
+    };
+
+    const persistTokens = async (tokens: StoredTokens) => {
+      await ctx.runMutation(saveTokens, {
+        accessToken: tokens.accessToken,
+        expiresAt: tokens.expiresAt,
+        refreshToken: tokens.refreshToken,
+      });
+    };
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    const refreshTokens = async (
+      refreshToken: string
+    ): Promise<StoredTokens> => {
+      if (!(clientId && clientSecret)) {
+        throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+      }
+
+      return await refreshGoogleAccessToken({
+        env: { clientId, clientSecret },
+        refreshToken,
+      });
+    };
+
+    const program = withFreshToken(
+      loadTokens,
+      persistTokens,
+      (accessToken) => markGmailAsRead(accessToken, email.gmailId),
+      { refreshTokens }
+    );
+
+    await Effect.runPromise(program);
+
+    const discardResult = await ctx.runMutation(discardPendingLinksRef, {
+      emailId: args.emailId as GenericId<"emails">,
+    });
+
+    await ctx.runMutation(markEmailAsReadRef, {
+      emailId: args.emailId as GenericId<"emails">,
+      processedAt: Date.now(),
+    });
+
+    return { discarded: discardResult.discarded };
   },
 });

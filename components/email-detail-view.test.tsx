@@ -1,5 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, expect, test } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, expect, test, vi } from "vitest";
 
 import { EmailDetailView } from "./email-detail-view";
 
@@ -172,4 +173,39 @@ test("renders second link title", () => {
   );
 
   expect(rendered.getByText("Link 2")).toBeInTheDocument();
+});
+
+test("calls onMarkAsRead when Mark as read is clicked", async () => {
+  const onMarkAsRead = vi.fn();
+  const user = userEvent.setup();
+  const rendered = render(
+    <EmailDetailView
+      backHref="/"
+      email={{
+        extractionError: false,
+        from: "newsletter@example.com",
+        id: "e1",
+        pendingLinkCount: 2,
+        receivedAt: 0,
+        subject: "Hello",
+      }}
+      links={[
+        {
+          description: "Desc",
+          id: "l1",
+          status: "pending",
+          title: "Link 1",
+          url: "https://example.com/1",
+        },
+      ]}
+      linksLoading={false}
+      onDiscardLink={() => undefined}
+      onMarkAsRead={onMarkAsRead}
+      onSaveLink={() => undefined}
+    />
+  );
+
+  await user.click(rendered.getByRole("button", { name: "Mark as read" }));
+
+  expect(onMarkAsRead).toHaveBeenCalled();
 });

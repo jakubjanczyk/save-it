@@ -24,6 +24,7 @@ export interface EmailDetailViewProps {
   nextHref?: string;
   onSaveLink: (linkId: string) => Promise<void> | void;
   onDiscardLink: (linkId: string) => Promise<void> | void;
+  onMarkAsRead?: () => Promise<void> | void;
 }
 
 export function EmailDetailView({
@@ -33,6 +34,7 @@ export function EmailDetailView({
   linksLoading = false,
   onDiscardLink,
   onSaveLink,
+  onMarkAsRead,
   nextHref,
   prevHref,
 }: EmailDetailViewProps) {
@@ -103,6 +105,18 @@ export function EmailDetailView({
           <span className="rounded bg-muted px-2 py-1 font-medium text-xs">
             {email.pendingLinkCount} pending
           </span>
+          {onMarkAsRead ? (
+            <Button
+              className="ml-auto"
+              onClick={async () => {
+                await onMarkAsRead();
+              }}
+              size="sm"
+              type="button"
+            >
+              Mark as read
+            </Button>
+          ) : null}
         </div>
       </div>
 

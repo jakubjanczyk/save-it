@@ -52,6 +52,13 @@ const listWithPendingLinks: FunctionReference<
   EmailListItem[]
 > = makeFunctionReference("emails:listWithPendingLinks");
 
+const markAsRead: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+> = makeFunctionReference("emails:markAsRead");
+
 function encodeBase64Url(value: string) {
   const base64 = Buffer.from(value, "utf-8").toString("base64");
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -484,4 +491,252 @@ test("fetchFromGmail sets extractionError when extraction fails", async () => {
   } finally {
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = previousApiKey;
   }
+});
+
+test("markAsRead calls Gmail modify endpoint", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+
+  const restoreFetch = withMockFetch((input, init) => {
+    calls.push({ input: input.toString(), init });
+
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(markAsRead, { emailId });
+  } finally {
+    restoreFetch();
+  }
+
+  expect(calls).toHaveLength(1);
+  expect(calls[0]?.input).toContain("/gmail/v1/users/me/messages/m1/modify");
+});
+
+test("markAsRead discards pending links", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const pendingId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Pending",
+      emailId,
+      status: "pending",
+      title: "Pending",
+      url: "https://example.com/pending",
+    })
+  );
+
+  const savedId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Saved",
+      emailId,
+      raindropId: "r1",
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved",
+      url: "https://example.com/saved",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    const result = await t.action(markAsRead, { emailId });
+    expect(result.discarded).toBe(1);
+  } finally {
+    restoreFetch();
+  }
+
+  const pending = await t.run((ctx) => ctx.db.get(pendingId));
+  const saved = await t.run((ctx) => ctx.db.get(savedId));
+
+  expect(pending?.status).toBe("discarded");
+  expect(saved?.status).toBe("saved");
+});
+
+test("markAsRead updates email record", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(markAsRead, { emailId });
+  } finally {
+    restoreFetch();
+  }
+
+  const email = await t.run((ctx) => ctx.db.get(emailId));
+  expect(email?.markedAsRead).toBe(true);
+  expect(typeof email?.processedAt).toBe("number");
+});
+
+test("markAsRead does not discard links if Gmail call fails", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const pendingId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Pending",
+      emailId,
+      status: "pending",
+      title: "Pending",
+      url: "https://example.com/pending",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(new Response("Unauthorized", { status: 401 }));
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await expect(t.action(markAsRead, { emailId })).rejects.toThrow();
+  } finally {
+    restoreFetch();
+  }
+
+  const pending = await t.run((ctx) => ctx.db.get(pendingId));
+  expect(pending?.status).toBe("pending");
 });
