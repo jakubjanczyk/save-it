@@ -1,6 +1,6 @@
 "use client";
 
-import { HomeIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import { HomeIcon, SettingsIcon, TargetIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,6 +20,11 @@ const items = [
     title: "Home",
     href: "/",
     icon: HomeIcon,
+  },
+  {
+    title: "Focus",
+    href: "/focus",
+    icon: TargetIcon,
   },
   {
     title: "Senders",

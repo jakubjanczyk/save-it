@@ -52,11 +52,29 @@ export const listLinksByEmail: FunctionReference<
 > = makeFunctionReference("links:listByEmail");
 
 export const discardLink: FunctionReference<
-  "mutation",
+  "action",
   "public",
   { linkId: GenericId<"links"> },
   null
 > = makeFunctionReference("links:discard");
+
+export const listPendingFocus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  Array<{
+    description: string;
+    email: {
+      from: string;
+      id: GenericId<"emails">;
+      receivedAt: number;
+      subject: string;
+    };
+    id: GenericId<"links">;
+    title: string;
+    url: string;
+  }>
+> = makeFunctionReference("links:listPendingFocus");
 
 export const saveLink: FunctionReference<
   "action",

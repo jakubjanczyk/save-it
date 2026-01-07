@@ -24,8 +24,15 @@ const listByEmail: FunctionReference<
   LinkListItem[]
 > = makeFunctionReference("links:listByEmail");
 
+const listPendingFocus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  Array<{ id: GenericId<"links">; email: { id: GenericId<"emails"> } }>
+> = makeFunctionReference("links:listPendingFocus");
+
 const discard: FunctionReference<
-  "mutation",
+  "action",
   "public",
   { linkId: GenericId<"links"> },
   null
@@ -142,10 +149,20 @@ test("discard updates link status to discarded", async () => {
     })
   );
 
-  await t.mutation(discard, { linkId });
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
+    })
+  );
+
+  await t.action(discard, { linkId });
 
   const links = await t.run((ctx) => ctx.db.query("links").collect());
-  expect(links[0]?.status).toBe("discarded");
+  expect(links.find((link) => link._id === linkId)?.status).toBe("discarded");
 });
 
 test("save returns the created raindropId", async () => {
@@ -177,6 +194,16 @@ test("save returns the created raindropId", async () => {
       status: "pending",
       title: "Title",
       url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
     })
   );
 
@@ -233,6 +260,16 @@ test("save updates link status to saved", async () => {
       status: "pending",
       title: "Title",
       url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
     })
   );
 
@@ -297,4 +334,212 @@ test("save throws when Raindrop is not connected", async () => {
   await expect(t.action(save, { linkId })).rejects.toThrow(
     "Raindrop not connected"
   );
+});
+
+test("listPendingFocus excludes emails that are already marked as read", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const activeEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Active",
+    })
+  );
+
+  const hiddenEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g2",
+      markedAsRead: true,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hidden",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId: activeEmailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId: hiddenEmailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/b",
+    })
+  );
+
+  const result = await t.query(listPendingFocus, {});
+
+  expect(result).toHaveLength(1);
+  expect(result[0]?.email.id).toBe(activeEmailId);
+});
+
+test("save marks email as read when it saves the last pending link", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("oauthTokens", {
+      accessToken: "raindrop-access",
+      type: "raindrop",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("oauthTokens", {
+      accessToken: "gmail-access",
+      expiresAt: Date.now() + 60_000,
+      refreshToken: "refresh",
+      type: "google",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/rest/v1/raindrop") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ item: { _id: 777 } }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(save, { linkId });
+  } finally {
+    restoreFetch();
+  }
+
+  const email = await t.run((ctx) => ctx.db.get(emailId));
+  expect(email?.markedAsRead).toBe(true);
+});
+
+test("discard marks email as read when it discards the last pending link", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("oauthTokens", {
+      accessToken: "gmail-access",
+      expiresAt: Date.now() + 60_000,
+      refreshToken: "refresh",
+      type: "google",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(discard, { linkId });
+  } finally {
+    restoreFetch();
+  }
+
+  const email = await t.run((ctx) => ctx.db.get(emailId));
+  expect(email?.markedAsRead).toBe(true);
 });

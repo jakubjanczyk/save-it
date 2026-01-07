@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ export function EmailDetailClient() {
 
   const emails = useQuery(listWithPendingLinks, {});
   const links = useQuery(listLinksByEmail, emailId ? { emailId } : "skip");
-  const discard = useMutation(discardLink);
+  const discard = useAction(discardLink);
   const save = useAction(saveLink);
   const markAsRead = useAction(markEmailAsRead);
 
@@ -85,6 +85,7 @@ export function EmailDetailClient() {
   const email = emailIndex >= 0 ? emails[emailIndex] : null;
   const prevEmailId = emailIndex > 0 ? emails[emailIndex - 1]?._id : undefined;
   const nextEmailId = emailIndex >= 0 ? emails[emailIndex + 1]?._id : undefined;
+  const nextEmailHref = nextEmailId ? `/emails/${nextEmailId}` : "/";
 
   if (!email) {
     return (
@@ -125,6 +126,10 @@ export function EmailDetailClient() {
       nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
       onDiscardLink={async (linkId) => {
         await discard({ linkId: linkId as GenericId<"links"> });
+        if (email.pendingLinkCount <= 1 && !email.extractionError) {
+          router.push(nextEmailHref);
+          router.refresh();
+        }
       }}
       onMarkAsRead={async () => {
         try {
@@ -146,6 +151,10 @@ export function EmailDetailClient() {
         try {
           await save({ linkId: linkId as GenericId<"links"> });
           toast.success("Saved to Raindrop.");
+          if (email.pendingLinkCount <= 1 && !email.extractionError) {
+            router.push(nextEmailHref);
+            router.refresh();
+          }
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Save failed");
         }

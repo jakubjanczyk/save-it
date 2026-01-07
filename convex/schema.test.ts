@@ -41,6 +41,13 @@ describe("convex schema", () => {
     });
   });
 
+  test("defines links.by_status index", () => {
+    expect(schema.tables.links[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_status",
+      fields: ["status"],
+    });
+  });
+
   test("defines oauthTokens.by_type index", () => {
     expect(schema.tables.oauthTokens[" indexes"]()).toContainEqual({
       indexDescriptor: "by_type",

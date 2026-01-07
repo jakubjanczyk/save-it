@@ -33,7 +33,9 @@ export default defineSchema({
     ),
     savedAt: v.optional(v.number()),
     raindropId: v.optional(v.string()),
-  }).index("by_emailId", ["emailId"]),
+  })
+    .index("by_emailId", ["emailId"])
+    .index("by_status", ["status"]),
 
   oauthTokens: defineTable({
     type: v.string(),

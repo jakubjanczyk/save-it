@@ -1388,7 +1388,7 @@ Tests should run on every PR:
 63. Build `LinkList` component - make tests pass
 64. Write tests for links Convex functions (`convex/links.test.ts`)
     - Test listByEmail query
-    - Test discard mutation
+    - Test discard action
 65. Implement links Convex functions - make tests pass
 66. Wire up discard button
 67. Add visual feedback for actioned links (fade/strikethrough)
@@ -1400,6 +1400,15 @@ Tests should run on every PR:
 71. Test list view navigation and discard flow
 
 ### Phase 6: Triage UI - Focus View
+
+**Implementation note:** Focus View is a separate `/focus` page that triages across *all* pending links (not per-email).
+
+**Progress (done in this repo):**
+- [x] Focus triage page `/focus` with `?linkId=` state (`app/(app)/focus/page.tsx`, `app/(app)/focus/page-client.tsx`)
+- [x] `FocusView` component + tests (`components/focus-view.tsx`, `components/focus-view.test.tsx`)
+- [x] Convex query to fetch pending focus items (`convex/links.ts`, `convex/links.test.ts`)
+- [x] Auto-mark emails as read once their last pending link is processed (`convex/links.ts`, `convex/links.test.ts`)
+- [x] E2E focus triage spec drafted (`e2e/triage-focus.spec.ts`)
 
 72. Write tests for `ProgressIndicator` component
     - Test display format
@@ -1466,7 +1475,7 @@ Tests should run on every PR:
 ### Phase 9: Email Completion
 
 **Progress (done in this repo):**
-- [x] Steps 97–100: `emails.markAsRead` action + tests + UI wiring; hide marked-as-read emails (`convex/emails.ts`, `convex/emails.test.ts`, `components/email-detail-view.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
+- [x] Steps 97–100 (except keyboard shortcut): `emails.markAsRead` action + tests + UI wiring; hide marked-as-read emails (`convex/emails.ts`, `convex/emails.test.ts`, `components/email-detail-view.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
 
 97. Write tests for emails.markAsRead action (`convex/emails.test.ts`)
     - Test pending links discarded
