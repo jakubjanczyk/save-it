@@ -15,6 +15,8 @@ export interface KeyboardShortcutHandlers {
   onToggleView?: () => Promise<void> | void;
 }
 
+type HandlerName = keyof KeyboardShortcutHandlers;
+
 function runHandler(handler: (() => Promise<void> | void) | undefined) {
   if (!handler) {
     return;
@@ -43,12 +45,72 @@ function isEditableElement(element: Element | null) {
   return tag === "input" || tag === "textarea" || tag === "select";
 }
 
+const keyMap: Readonly<Record<string, HandlerName | undefined>> = {
+  "?": "onToggleHelp",
+  d: "onDiscard",
+  enter: "onOpen",
+  j: "onNextLink",
+  k: "onPrevLink",
+  m: "onMarkAsRead",
+  n: "onNextEmail",
+  o: "onOpen",
+  p: "onPrevEmail",
+  s: "onSave",
+  v: "onToggleView",
+  arrowdown: "onNextLink",
+  arrowup: "onPrevLink",
+};
+
+function shouldIgnoreKeyEvent(
+  event: KeyboardEvent,
+  opts: { disableWhenInputFocused: boolean }
+) {
+  if (event.defaultPrevented) {
+    return true;
+  }
+
+  if (event.metaKey || event.ctrlKey || event.altKey) {
+    return true;
+  }
+
+  if (
+    opts.disableWhenInputFocused &&
+    isEditableElement(document.activeElement)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function getShortcutHandler(
+  keyLower: string,
+  handlers: KeyboardShortcutHandlers,
+  opts: { enableArrowSaveDiscard: boolean }
+) {
+  if (keyLower === "arrowleft") {
+    return opts.enableArrowSaveDiscard ? handlers.onDiscard : undefined;
+  }
+
+  if (keyLower === "arrowright") {
+    return opts.enableArrowSaveDiscard ? handlers.onSave : undefined;
+  }
+
+  const mapped = keyMap[keyLower];
+  return mapped ? handlers[mapped] : undefined;
+}
+
 export function useKeyboardShortcuts(
   handlers: KeyboardShortcutHandlers,
-  options?: { enabled?: boolean; disableWhenInputFocused?: boolean }
+  options?: {
+    enabled?: boolean;
+    disableWhenInputFocused?: boolean;
+    enableArrowSaveDiscard?: boolean;
+  }
 ) {
   const enabled = options?.enabled ?? true;
   const disableWhenInputFocused = options?.disableWhenInputFocused ?? true;
+  const enableArrowSaveDiscard = options?.enableArrowSaveDiscard ?? true;
 
   useEffect(() => {
     if (!enabled) {
@@ -56,87 +118,21 @@ export function useKeyboardShortcuts(
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-
-      if (
-        disableWhenInputFocused &&
-        isEditableElement(document.activeElement)
-      ) {
+      if (shouldIgnoreKeyEvent(event, { disableWhenInputFocused })) {
         return;
       }
 
       const lower = event.key.toLowerCase();
+      const handler = getShortcutHandler(lower, handlers, {
+        enableArrowSaveDiscard,
+      });
 
-      const prevent = () => {
-        event.preventDefault();
-      };
-
-      switch (lower) {
-        case "?": {
-          prevent();
-          runHandler(handlers.onToggleHelp);
-          return;
-        }
-        case "v": {
-          prevent();
-          runHandler(handlers.onToggleView);
-          return;
-        }
-        case "m": {
-          prevent();
-          runHandler(handlers.onMarkAsRead);
-          return;
-        }
-        case "n": {
-          prevent();
-          runHandler(handlers.onNextEmail);
-          return;
-        }
-        case "p": {
-          prevent();
-          runHandler(handlers.onPrevEmail);
-          return;
-        }
-        case "j":
-        case "arrowdown": {
-          prevent();
-          runHandler(handlers.onNextLink);
-          return;
-        }
-        case "k":
-        case "arrowup": {
-          prevent();
-          runHandler(handlers.onPrevLink);
-          return;
-        }
-        case "s":
-        case "arrowright": {
-          prevent();
-          runHandler(handlers.onSave);
-          return;
-        }
-        case "d":
-        case "arrowleft": {
-          prevent();
-          runHandler(handlers.onDiscard);
-          return;
-        }
-        case "o":
-        case "enter": {
-          prevent();
-          runHandler(handlers.onOpen);
-          return;
-        }
-        default: {
-          return;
-        }
+      if (!handler) {
+        return;
       }
+
+      event.preventDefault();
+      runHandler(handler);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -144,5 +140,5 @@ export function useKeyboardShortcuts(
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [disableWhenInputFocused, enabled, handlers]);
+  }, [disableWhenInputFocused, enableArrowSaveDiscard, enabled, handlers]);
 }

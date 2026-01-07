@@ -635,8 +635,8 @@ describe("fetchEmails", () => {
 
 | Action | Shortcut | Notes |
 |--------|----------|-------|
-| **Save link** | `S` or `→` | Saves current/selected link to Raindrop |
-| **Discard link** | `D` or `←` | Discards current/selected link |
+| **Save link** | `S` (Focus: `→`) | Saves current/selected link to Raindrop |
+| **Discard link** | `D` (Focus: `←`) | Discards current/selected link |
 | **Open link in new tab** | `O` or `Enter` | Preview before deciding |
 | **Mark email as read** | `M` | Discards remaining links + marks read |
 | **Next link** | `J` or `↓` | List view: move selection down |
@@ -650,7 +650,7 @@ describe("fetchEmails", () => {
 - Use a keyboard shortcut library (e.g., `react-hotkeys-hook`) or native `useEffect` with `keydown` listener
 - Shortcuts only active when not focused on input fields
 - Show subtle hint in UI: "Press ? for keyboard shortcuts"
-- In Focus View, arrow keys (←/→) feel natural for swipe-like actions
+- In Focus View, keep shortcuts simple and predictable
 - In List View, vim-style (j/k) for navigation
 
 **Convex functions:**

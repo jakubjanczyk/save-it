@@ -93,3 +93,55 @@ test("calls onDiscard when Discard is clicked", async () => {
 
   expect(onDiscard).toHaveBeenCalledOnce();
 });
+
+test("shows Saved overlay when feedbackAction is save", () => {
+  const rendered = render(
+    <FocusView
+      feedbackAction="save"
+      item={{
+        description: "Desc",
+        email: {
+          from: "newsletter@example.com",
+          id: "e1",
+          receivedAt: 0,
+          subject: "Subject",
+        },
+        id: "l1",
+        title: "Link title",
+        url: "https://example.com/a",
+      }}
+      onDiscard={() => undefined}
+      onSave={() => undefined}
+      position={1}
+      total={3}
+    />
+  );
+
+  expect(rendered.getByText("Saved")).toBeInTheDocument();
+});
+
+test("shows Discarded overlay when feedbackAction is discard", () => {
+  const rendered = render(
+    <FocusView
+      feedbackAction="discard"
+      item={{
+        description: "Desc",
+        email: {
+          from: "newsletter@example.com",
+          id: "e1",
+          receivedAt: 0,
+          subject: "Subject",
+        },
+        id: "l1",
+        title: "Link title",
+        url: "https://example.com/a",
+      }}
+      onDiscard={() => undefined}
+      onSave={() => undefined}
+      position={1}
+      total={3}
+    />
+  );
+
+  expect(rendered.getByText("Discarded")).toBeInTheDocument();
+});

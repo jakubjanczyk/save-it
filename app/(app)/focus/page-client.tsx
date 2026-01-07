@@ -3,7 +3,7 @@
 import { useAction, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { FocusView } from "@/components/focus-view";
@@ -26,11 +26,22 @@ export function FocusClient() {
   const requestedLinkId = getActiveLinkId(searchParams.get("linkId"));
 
   const items = useQuery(listPendingFocus, {});
+  type FocusItem = NonNullable<typeof items>[number];
 
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
 
   const [busy, setBusy] = useState(false);
+  const [feedbackAction, setFeedbackAction] = useState<
+    "save" | "discard" | null
+  >(null);
+  const [displayedItem, setDisplayedItem] = useState<FocusItem | null>(null);
+
+  const displayedMetaRef = useRef<{
+    nextId: string | null;
+    position: number;
+    total: number;
+  }>({ nextId: null, position: 1, total: 1 });
 
   const activeIndex = useMemo(() => {
     if (!items || items.length === 0) {
@@ -51,10 +62,38 @@ export function FocusClient() {
       return;
     }
 
+    if (feedbackAction) {
+      return;
+    }
+
     if (!requestedLinkId || activeIndex === -1) {
       router.replace(`/focus?linkId=${items[0]?.id}`);
     }
-  }, [activeIndex, items, requestedLinkId, router]);
+  }, [activeIndex, feedbackAction, items, requestedLinkId, router]);
+
+  useEffect(() => {
+    if (feedbackAction) {
+      return;
+    }
+
+    if (!items || items.length === 0) {
+      setDisplayedItem(null);
+      return;
+    }
+
+    if (activeItem) {
+      setDisplayedItem(activeItem);
+
+      const nextId =
+        items[activeIndex + 1]?.id ?? items[activeIndex - 1]?.id ?? null;
+
+      displayedMetaRef.current = {
+        nextId,
+        position: activeIndex + 1,
+        total: items.length,
+      };
+    }
+  }, [activeIndex, activeItem, feedbackAction, items]);
 
   if (items === undefined) {
     return (
@@ -78,6 +117,50 @@ export function FocusClient() {
   }
 
   if (items.length === 0) {
+    if (feedbackAction && displayedItem) {
+      const total = displayedMetaRef.current.total;
+      const position = displayedMetaRef.current.position;
+
+      return (
+        <>
+          <KeyboardShortcuts
+            context="focus"
+            enabled={false}
+            onToggleView={() => {
+              router.push("/");
+            }}
+          />
+
+          <FocusView
+            busy
+            feedbackAction={feedbackAction}
+            item={{
+              description: displayedItem.description,
+              email: {
+                from: displayedItem.email.from,
+                id: displayedItem.email.id,
+                receivedAt: displayedItem.email.receivedAt,
+                subject: displayedItem.email.subject,
+              },
+              id: displayedItem.id,
+              title: displayedItem.title,
+              url: displayedItem.url,
+            }}
+            onDiscard={() => undefined}
+            onFeedbackComplete={() => {
+              const nextId = displayedMetaRef.current.nextId;
+              setFeedbackAction(null);
+              setBusy(false);
+              advance(nextId);
+            }}
+            onSave={() => undefined}
+            position={position}
+            total={total}
+          />
+        </>
+      );
+    }
+
     return (
       <Card>
         <CardHeader>
@@ -90,17 +173,12 @@ export function FocusClient() {
     );
   }
 
-  if (!activeItem) {
+  const shownItem = feedbackAction ? displayedItem : activeItem;
+  if (!shownItem) {
     return null;
   }
 
-  const total = items.length;
-  const position = activeIndex + 1;
-
-  const nextId =
-    items[activeIndex + 1]?.id ?? items[activeIndex - 1]?.id ?? null;
-
-  const advance = () => {
+  const advance = (nextId: string | null) => {
     if (nextId) {
       router.replace(`/focus?linkId=${nextId}`);
       router.refresh();
@@ -112,7 +190,7 @@ export function FocusClient() {
   };
 
   const openCurrent = () => {
-    window.open(activeItem.url, "_blank", "noopener,noreferrer");
+    window.open(shownItem.url, "_blank", "noopener,noreferrer");
   };
 
   const discardCurrent = async () => {
@@ -122,11 +200,21 @@ export function FocusClient() {
 
     setBusy(true);
     try {
-      await discard({ linkId: activeItem.id });
-      advance();
+      if (items && activeIndex >= 0) {
+        const nextId =
+          items[activeIndex + 1]?.id ?? items[activeIndex - 1]?.id ?? null;
+        displayedMetaRef.current = {
+          nextId,
+          position: activeIndex + 1,
+          total: items.length,
+        };
+      }
+
+      setDisplayedItem(shownItem);
+      await discard({ linkId: shownItem.id });
+      setFeedbackAction("discard");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Discard failed");
-    } finally {
       setBusy(false);
     }
   };
@@ -138,21 +226,39 @@ export function FocusClient() {
 
     setBusy(true);
     try {
-      await save({ linkId: activeItem.id });
-      toast.success("Saved to Raindrop.");
-      advance();
+      if (items && activeIndex >= 0) {
+        const nextId =
+          items[activeIndex + 1]?.id ?? items[activeIndex - 1]?.id ?? null;
+        displayedMetaRef.current = {
+          nextId,
+          position: activeIndex + 1,
+          total: items.length,
+        };
+      }
+
+      setDisplayedItem(shownItem);
+      await save({ linkId: shownItem.id });
+      setFeedbackAction("save");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed");
-    } finally {
       setBusy(false);
     }
   };
+
+  let position = 1;
+  if (feedbackAction) {
+    position = displayedMetaRef.current.position;
+  } else if (activeIndex >= 0) {
+    position = activeIndex + 1;
+  }
+
+  const total = feedbackAction ? displayedMetaRef.current.total : items.length;
 
   return (
     <>
       <KeyboardShortcuts
         context="focus"
-        enabled={!busy}
+        enabled={!(busy || feedbackAction)}
         onDiscard={discardCurrent}
         onOpen={openCurrent}
         onSave={saveCurrent}
@@ -163,19 +269,26 @@ export function FocusClient() {
 
       <FocusView
         busy={busy}
+        feedbackAction={feedbackAction}
         item={{
-          description: activeItem.description,
+          description: shownItem.description,
           email: {
-            from: activeItem.email.from,
-            id: activeItem.email.id,
-            receivedAt: activeItem.email.receivedAt,
-            subject: activeItem.email.subject,
+            from: shownItem.email.from,
+            id: shownItem.email.id,
+            receivedAt: shownItem.email.receivedAt,
+            subject: shownItem.email.subject,
           },
-          id: activeItem.id,
-          title: activeItem.title,
-          url: activeItem.url,
+          id: shownItem.id,
+          title: shownItem.title,
+          url: shownItem.url,
         }}
         onDiscard={discardCurrent}
+        onFeedbackComplete={() => {
+          const nextId = displayedMetaRef.current.nextId;
+          setFeedbackAction(null);
+          setBusy(false);
+          advance(nextId);
+        }}
         onSave={saveCurrent}
         position={position}
         total={total}

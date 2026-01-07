@@ -29,8 +29,6 @@ export function LinkCard({
   title,
   url,
 }: LinkCardProps) {
-  const actionDisabled = status !== "pending";
-
   if (status !== "pending") {
     return (
       <Card>
@@ -65,15 +63,7 @@ export function LinkCard({
       data-selected={selected || undefined}
     >
       <CardHeader className="gap-1">
-        <CardTitle
-          className={
-            actionDisabled
-              ? "leading-snug line-through opacity-70"
-              : "leading-snug"
-          }
-        >
-          {title}
-        </CardTitle>
+        <CardTitle className="leading-snug">{title}</CardTitle>
         <a
           className="truncate text-muted-foreground text-sm underline underline-offset-2"
           href={url}

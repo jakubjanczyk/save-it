@@ -34,8 +34,8 @@ interface ShortcutRow {
 }
 
 const listShortcuts: ShortcutRow[] = [
-  { action: "Save link", keys: "S or →" },
-  { action: "Discard link", keys: "D or ←" },
+  { action: "Save link", keys: "S" },
+  { action: "Discard link", keys: "D" },
   { action: "Open link", keys: "O or Enter" },
   { action: "Mark email as read", keys: "M" },
   { action: "Next link", keys: "J or ↓" },
@@ -78,7 +78,7 @@ export function KeyboardShortcuts(props: KeyboardShortcutsProps) {
           onToggleHelp: toggleHelp,
           onToggleView: props.onToggleView,
         },
-    { enabled }
+    { enableArrowSaveDiscard: props.context === "focus", enabled }
   );
 
   const title =

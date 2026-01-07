@@ -12,12 +12,16 @@ function TestHarness(props: {
   onDiscard?: () => void;
   onSave?: () => void;
   onToggleHelp?: () => void;
+  enableArrowSaveDiscard?: boolean;
 }) {
-  useKeyboardShortcuts({
-    onDiscard: props.onDiscard,
-    onSave: props.onSave,
-    onToggleHelp: props.onToggleHelp,
-  });
+  useKeyboardShortcuts(
+    {
+      onDiscard: props.onDiscard,
+      onSave: props.onSave,
+      onToggleHelp: props.onToggleHelp,
+    },
+    { enableArrowSaveDiscard: props.enableArrowSaveDiscard }
+  );
 
   return (
     <div>
@@ -38,11 +42,33 @@ test("calls onSave when S is pressed", async () => {
   expect(onSave).toHaveBeenCalledOnce();
 });
 
-test("calls onDiscard when ArrowLeft is pressed", async () => {
+test("calls onDiscard when D is pressed", async () => {
   const onDiscard = vi.fn();
   const user = userEvent.setup();
 
   render(<TestHarness onDiscard={onDiscard} />);
+
+  await user.keyboard("d");
+
+  expect(onDiscard).toHaveBeenCalledOnce();
+});
+
+test("does not call onDiscard when ArrowLeft is pressed", async () => {
+  const onDiscard = vi.fn();
+  const user = userEvent.setup();
+
+  render(<TestHarness enableArrowSaveDiscard={false} onDiscard={onDiscard} />);
+
+  await user.keyboard("{ArrowLeft}");
+
+  expect(onDiscard).not.toHaveBeenCalled();
+});
+
+test("calls onDiscard when ArrowLeft is pressed when enabled", async () => {
+  const onDiscard = vi.fn();
+  const user = userEvent.setup();
+
+  render(<TestHarness enableArrowSaveDiscard onDiscard={onDiscard} />);
 
   await user.keyboard("{ArrowLeft}");
 

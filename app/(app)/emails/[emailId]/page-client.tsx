@@ -39,6 +39,8 @@ export function EmailDetailClient() {
   const save = useAction(saveLink);
   const markAsRead = useAction(markEmailAsRead);
 
+  const [actionBusy, setActionBusy] = useState(false);
+
   const linksLoading = links === undefined;
   const listViewLinks =
     links?.map((link) => ({
@@ -110,27 +112,32 @@ export function EmailDetailClient() {
   };
 
   const discardSelected = async () => {
-    if (!selectedLinkId) {
+    if (!selectedLinkId || actionBusy) {
       return;
     }
 
     try {
+      setActionBusy(true);
       await discard({ linkId: selectedLinkId });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Discard failed");
+    } finally {
+      setActionBusy(false);
     }
   };
 
   const saveSelected = async () => {
-    if (!selectedLinkId) {
+    if (!selectedLinkId || actionBusy) {
       return;
     }
 
     try {
+      setActionBusy(true);
       await save({ linkId: selectedLinkId });
-      toast.success("Saved to Raindrop.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed");
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -222,6 +229,7 @@ export function EmailDetailClient() {
     <>
       <KeyboardShortcuts
         context="list"
+        enabled={!actionBusy}
         onDiscard={discardSelected}
         onMarkAsRead={markCurrentEmailAsRead}
         onNextEmail={
@@ -261,23 +269,36 @@ export function EmailDetailClient() {
         linksLoading={linksLoading}
         nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
         onDiscardLink={async (linkId) => {
+          if (actionBusy) {
+            return;
+          }
+
           setSelectedLinkId(linkId as GenericId<"links">);
           try {
+            setActionBusy(true);
             await discard({ linkId: linkId as GenericId<"links"> });
           } catch (error) {
             toast.error(
               error instanceof Error ? error.message : "Discard failed"
             );
+          } finally {
+            setActionBusy(false);
           }
         }}
         onMarkAsRead={markCurrentEmailAsRead}
         onSaveLink={async (linkId) => {
+          if (actionBusy) {
+            return;
+          }
+
           setSelectedLinkId(linkId as GenericId<"links">);
           try {
+            setActionBusy(true);
             await save({ linkId: linkId as GenericId<"links"> });
-            toast.success("Saved to Raindrop.");
           } catch (error) {
             toast.error(error instanceof Error ? error.message : "Save failed");
+          } finally {
+            setActionBusy(false);
           }
         }}
         prevHref={prevEmailId ? `/emails/${prevEmailId}` : undefined}
