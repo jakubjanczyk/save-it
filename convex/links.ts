@@ -63,13 +63,13 @@ const discardLinkRef = makeFunctionReference(
   null
 >;
 
-const countPendingLinksByEmailRef = makeFunctionReference(
-  "links:countPendingLinksByEmail"
+const hasPendingLinksByEmailRef = makeFunctionReference(
+  "links:hasPendingLinksByEmail"
 ) as unknown as FunctionReference<
   "query",
   "internal",
   { emailId: GenericId<"emails"> },
-  number
+  boolean
 >;
 
 const markEmailAsReadRef: FunctionReference<
@@ -110,14 +110,18 @@ export const discard = action({
       linkId: args.linkId as GenericId<"links">,
     });
 
-    const remaining = await ctx.runQuery(countPendingLinksByEmailRef, {
+    const hasPending = await ctx.runQuery(hasPendingLinksByEmailRef, {
       emailId: link.emailId as GenericId<"emails">,
     });
 
-    if (remaining === 0) {
-      await ctx.runAction(markEmailAsReadRef, {
-        emailId: link.emailId as GenericId<"emails">,
-      });
+    if (!hasPending) {
+      try {
+        await ctx.runAction(markEmailAsReadRef, {
+          emailId: link.emailId as GenericId<"emails">,
+        });
+      } catch {
+        // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
+      }
     }
 
     return null;
@@ -156,7 +160,7 @@ export const discardLink = internalMutation({
   },
 });
 
-export const countPendingLinksByEmail = internalQuery({
+export const hasPendingLinksByEmail = internalQuery({
   args: { emailId: v.id("emails") },
   handler: async (ctx, args) => {
     const pending = await ctx.db
@@ -165,7 +169,7 @@ export const countPendingLinksByEmail = internalQuery({
       .filter((q) => q.eq(q.field("status"), "pending"))
       .take(1);
 
-    return pending.length;
+    return pending.length > 0;
   },
 });
 
@@ -203,14 +207,18 @@ export const save = action({
       savedAt: Date.now(),
     });
 
-    const remaining = await ctx.runQuery(countPendingLinksByEmailRef, {
+    const hasPending = await ctx.runQuery(hasPendingLinksByEmailRef, {
       emailId: link.emailId as GenericId<"emails">,
     });
 
-    if (remaining === 0) {
-      await ctx.runAction(markEmailAsReadRef, {
-        emailId: link.emailId as GenericId<"emails">,
-      });
+    if (!hasPending) {
+      try {
+        await ctx.runAction(markEmailAsReadRef, {
+          emailId: link.emailId as GenericId<"emails">,
+        });
+      } catch {
+        // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
+      }
     }
 
     return { raindropId };

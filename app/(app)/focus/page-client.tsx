@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { FocusView } from "@/components/focus-view";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -110,56 +111,75 @@ export function FocusClient() {
     router.refresh();
   };
 
+  const openCurrent = () => {
+    window.open(activeItem.url, "_blank", "noopener,noreferrer");
+  };
+
+  const discardCurrent = async () => {
+    if (busy) {
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await discard({ linkId: activeItem.id });
+      advance();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Discard failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveCurrent = async () => {
+    if (busy) {
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await save({ linkId: activeItem.id });
+      toast.success("Saved to Raindrop.");
+      advance();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <FocusView
-      busy={busy}
-      item={{
-        description: activeItem.description,
-        email: {
-          from: activeItem.email.from,
-          id: activeItem.email.id,
-          receivedAt: activeItem.email.receivedAt,
-          subject: activeItem.email.subject,
-        },
-        id: activeItem.id,
-        title: activeItem.title,
-        url: activeItem.url,
-      }}
-      onDiscard={async () => {
-        if (busy) {
-          return;
-        }
+    <>
+      <KeyboardShortcuts
+        context="focus"
+        enabled={!busy}
+        onDiscard={discardCurrent}
+        onOpen={openCurrent}
+        onSave={saveCurrent}
+        onToggleView={() => {
+          router.push("/");
+        }}
+      />
 
-        setBusy(true);
-        try {
-          await discard({ linkId: activeItem.id });
-          advance();
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Discard failed"
-          );
-        } finally {
-          setBusy(false);
-        }
-      }}
-      onSave={async () => {
-        if (busy) {
-          return;
-        }
-
-        setBusy(true);
-        try {
-          await save({ linkId: activeItem.id });
-          toast.success("Saved to Raindrop.");
-          advance();
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Save failed");
-        } finally {
-          setBusy(false);
-        }
-      }}
-      position={position}
-      total={total}
-    />
+      <FocusView
+        busy={busy}
+        item={{
+          description: activeItem.description,
+          email: {
+            from: activeItem.email.from,
+            id: activeItem.email.id,
+            receivedAt: activeItem.email.receivedAt,
+            subject: activeItem.email.subject,
+          },
+          id: activeItem.id,
+          title: activeItem.title,
+          url: activeItem.url,
+        }}
+        onDiscard={discardCurrent}
+        onSave={saveCurrent}
+        position={position}
+        total={total}
+      />
+    </>
   );
 }

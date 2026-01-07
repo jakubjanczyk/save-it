@@ -413,8 +413,15 @@ export const listWithPendingLinks = query({
 
       const pendingLinkCount = pendingLinks.length;
 
-      if (!(email.extractionError || pendingLinkCount > 0)) {
-        continue;
+      if (!email.extractionError && pendingLinkCount === 0) {
+        const hasAnyLinks = await ctx.db
+          .query("links")
+          .withIndex("by_emailId", (q) => q.eq("emailId", email._id))
+          .take(1);
+
+        if (hasAnyLinks.length === 0) {
+          continue;
+        }
       }
 
       results.push({

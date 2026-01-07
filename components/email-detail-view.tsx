@@ -22,6 +22,7 @@ export interface EmailDetailViewProps {
   backHref: string;
   prevHref?: string;
   nextHref?: string;
+  selectedLinkId?: string;
   onSaveLink: (linkId: string) => Promise<void> | void;
   onDiscardLink: (linkId: string) => Promise<void> | void;
   onMarkAsRead?: () => Promise<void> | void;
@@ -37,6 +38,7 @@ export function EmailDetailView({
   onMarkAsRead,
   nextHref,
   prevHref,
+  selectedLinkId,
 }: EmailDetailViewProps) {
   const linkSkeletonCount = Math.max(
     1,
@@ -105,6 +107,9 @@ export function EmailDetailView({
           <span className="rounded bg-muted px-2 py-1 font-medium text-xs">
             {email.pendingLinkCount} pending
           </span>
+          <span className="text-muted-foreground text-xs">
+            Press ? for shortcuts
+          </span>
           {onMarkAsRead ? (
             <Button
               className="ml-auto"
@@ -126,6 +131,7 @@ export function EmailDetailView({
         loading={linksLoading}
         onDiscardLink={onDiscardLink}
         onSaveLink={onSaveLink}
+        selectedLinkId={selectedLinkId}
         skeletonCount={linkSkeletonCount}
       />
     </div>

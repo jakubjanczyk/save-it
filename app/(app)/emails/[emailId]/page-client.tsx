@@ -3,9 +3,11 @@
 import { useAction, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmailDetailView } from "@/components/email-detail-view";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { LinkList } from "@/components/link-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +38,122 @@ export function EmailDetailClient() {
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
   const markAsRead = useAction(markEmailAsRead);
+
+  const linksLoading = links === undefined;
+  const listViewLinks =
+    links?.map((link) => ({
+      description: link.description,
+      id: link._id,
+      status: link.status,
+      title: link.title,
+      url: link.url,
+    })) ?? [];
+
+  const pendingLinkIds = useMemo(
+    () =>
+      listViewLinks
+        .filter((link) => link.status === "pending")
+        .map((link) => link.id),
+    [listViewLinks]
+  );
+
+  const [selectedLinkId, setSelectedLinkId] =
+    useState<GenericId<"links"> | null>(null);
+
+  useEffect(() => {
+    if (pendingLinkIds.length === 0) {
+      setSelectedLinkId(null);
+      return;
+    }
+
+    if (!(selectedLinkId && pendingLinkIds.includes(selectedLinkId))) {
+      setSelectedLinkId(pendingLinkIds[0] ?? null);
+    }
+  }, [pendingLinkIds, selectedLinkId]);
+
+  const selectedLink = useMemo(() => {
+    if (!selectedLinkId) {
+      return null;
+    }
+
+    return listViewLinks.find((link) => link.id === selectedLinkId) ?? null;
+  }, [listViewLinks, selectedLinkId]);
+
+  const selectNextLink = () => {
+    if (pendingLinkIds.length === 0) {
+      return;
+    }
+
+    const current = selectedLinkId ?? pendingLinkIds[0];
+    const currentIndex = current ? pendingLinkIds.indexOf(current) : -1;
+    const nextIndex = Math.min(pendingLinkIds.length - 1, currentIndex + 1);
+    setSelectedLinkId(pendingLinkIds[nextIndex] ?? pendingLinkIds[0] ?? null);
+  };
+
+  const selectPrevLink = () => {
+    if (pendingLinkIds.length === 0) {
+      return;
+    }
+
+    const current = selectedLinkId ?? pendingLinkIds[0];
+    const currentIndex = current ? pendingLinkIds.indexOf(current) : -1;
+    const prevIndex = Math.max(0, currentIndex - 1);
+    setSelectedLinkId(pendingLinkIds[prevIndex] ?? pendingLinkIds[0] ?? null);
+  };
+
+  const openSelected = () => {
+    if (!selectedLink) {
+      return;
+    }
+
+    window.open(selectedLink.url, "_blank", "noopener,noreferrer");
+  };
+
+  const discardSelected = async () => {
+    if (!selectedLinkId) {
+      return;
+    }
+
+    try {
+      await discard({ linkId: selectedLinkId });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Discard failed");
+    }
+  };
+
+  const saveSelected = async () => {
+    if (!selectedLinkId) {
+      return;
+    }
+
+    try {
+      await save({ linkId: selectedLinkId });
+      toast.success("Saved to Raindrop.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Save failed");
+    }
+  };
+
+  const markCurrentEmailAsRead = async () => {
+    if (!emailId) {
+      return;
+    }
+
+    try {
+      const result = await markAsRead({
+        emailId,
+      });
+      toast.success(
+        `Marked as read.${result.discarded > 0 ? ` Discarded ${result.discarded} pending ${result.discarded === 1 ? "link" : "links"}.` : ""}`
+      );
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Mark as read failed"
+      );
+    }
+  };
 
   if (!emailId) {
     return (
@@ -85,81 +203,86 @@ export function EmailDetailClient() {
   const email = emailIndex >= 0 ? emails[emailIndex] : null;
   const prevEmailId = emailIndex > 0 ? emails[emailIndex - 1]?._id : undefined;
   const nextEmailId = emailIndex >= 0 ? emails[emailIndex + 1]?._id : undefined;
-  const nextEmailHref = nextEmailId ? `/emails/${nextEmailId}` : "/";
 
   if (!email) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Unknown email</CardTitle>
+          <CardTitle>Email not in queue</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground text-sm">
-          This email is not available. Go back to the inbox and pick one.
+          This email is already processed or not available. Go back to the inbox
+          to pick another.
         </CardContent>
       </Card>
     );
   }
 
-  const linksLoading = links === undefined;
-  const listViewLinks =
-    links?.map((link) => ({
-      description: link.description,
-      id: link._id,
-      status: link.status,
-      title: link.title,
-      url: link.url,
-    })) ?? [];
-
   return (
-    <EmailDetailView
-      backHref="/"
-      email={{
-        extractionError: email.extractionError,
-        from: email.from,
-        id: email._id,
-        pendingLinkCount: email.pendingLinkCount,
-        receivedAt: email.receivedAt,
-        subject: email.subject,
-      }}
-      links={listViewLinks}
-      linksLoading={linksLoading}
-      nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
-      onDiscardLink={async (linkId) => {
-        await discard({ linkId: linkId as GenericId<"links"> });
-        if (email.pendingLinkCount <= 1 && !email.extractionError) {
-          router.push(nextEmailHref);
-          router.refresh();
+    <>
+      <KeyboardShortcuts
+        context="list"
+        onDiscard={discardSelected}
+        onMarkAsRead={markCurrentEmailAsRead}
+        onNextEmail={
+          nextEmailId
+            ? () => {
+                router.push(`/emails/${nextEmailId}`);
+              }
+            : undefined
         }
-      }}
-      onMarkAsRead={async () => {
-        try {
-          const result = await markAsRead({
-            emailId: emailId as GenericId<"emails">,
-          });
-          toast.success(
-            `Marked as read.${result.discarded > 0 ? ` Discarded ${result.discarded} pending ${result.discarded === 1 ? "link" : "links"}.` : ""}`
-          );
-          router.push("/");
-          router.refresh();
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Mark as read failed"
-          );
+        onNextLink={selectNextLink}
+        onOpen={openSelected}
+        onPrevEmail={
+          prevEmailId
+            ? () => {
+                router.push(`/emails/${prevEmailId}`);
+              }
+            : undefined
         }
-      }}
-      onSaveLink={async (linkId) => {
-        try {
-          await save({ linkId: linkId as GenericId<"links"> });
-          toast.success("Saved to Raindrop.");
-          if (email.pendingLinkCount <= 1 && !email.extractionError) {
-            router.push(nextEmailHref);
-            router.refresh();
+        onPrevLink={selectPrevLink}
+        onSave={saveSelected}
+        onToggleView={() => {
+          router.push("/focus");
+        }}
+      />
+
+      <EmailDetailView
+        backHref="/"
+        email={{
+          extractionError: email.extractionError,
+          from: email.from,
+          id: email._id,
+          pendingLinkCount: email.pendingLinkCount,
+          receivedAt: email.receivedAt,
+          subject: email.subject,
+        }}
+        links={listViewLinks}
+        linksLoading={linksLoading}
+        nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
+        onDiscardLink={async (linkId) => {
+          setSelectedLinkId(linkId as GenericId<"links">);
+          try {
+            await discard({ linkId: linkId as GenericId<"links"> });
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : "Discard failed"
+            );
           }
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Save failed");
-        }
-      }}
-      prevHref={prevEmailId ? `/emails/${prevEmailId}` : undefined}
-    />
+        }}
+        onMarkAsRead={markCurrentEmailAsRead}
+        onSaveLink={async (linkId) => {
+          setSelectedLinkId(linkId as GenericId<"links">);
+          try {
+            await save({ linkId: linkId as GenericId<"links"> });
+            toast.success("Saved to Raindrop.");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Save failed");
+          }
+        }}
+        prevHref={prevEmailId ? `/emails/${prevEmailId}` : undefined}
+        selectedLinkId={selectedLinkId ?? undefined}
+      />
+    </>
   );
 }

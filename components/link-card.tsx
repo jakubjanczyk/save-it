@@ -15,6 +15,7 @@ export interface LinkCardProps {
   description: string;
   url: string;
   status?: "pending" | "saved" | "discarded";
+  selected?: boolean;
   onSave: () => Promise<void> | void;
   onDiscard: () => Promise<void> | void;
 }
@@ -23,6 +24,7 @@ export function LinkCard({
   description,
   onDiscard,
   onSave,
+  selected = false,
   status = "pending",
   title,
   url,
@@ -54,7 +56,14 @@ export function LinkCard({
   }
 
   return (
-    <Card>
+    <Card
+      className={
+        selected
+          ? "ring-2 ring-ring ring-offset-2 ring-offset-background"
+          : undefined
+      }
+      data-selected={selected || undefined}
+    >
       <CardHeader className="gap-1">
         <CardTitle
           className={

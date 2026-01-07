@@ -52,6 +52,7 @@ export interface LinkListProps {
   extractionError?: boolean;
   loading?: boolean;
   skeletonCount?: number;
+  selectedLinkId?: string;
   onSaveLink: (linkId: string) => Promise<void> | void;
   onDiscardLink: (linkId: string) => Promise<void> | void;
 }
@@ -61,6 +62,7 @@ export function LinkList({
   links,
   loading = false,
   skeletonCount = 3,
+  selectedLinkId,
   onDiscardLink,
   onSaveLink,
 }: LinkListProps) {
@@ -130,6 +132,7 @@ export function LinkList({
               onSave={async () => {
                 await onSaveLink(link.id);
               }}
+              selected={link.id === selectedLinkId}
               status={link.status}
               title={link.title}
               url={link.url}

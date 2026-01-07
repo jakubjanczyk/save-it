@@ -10,7 +10,7 @@ export default function FocusPage() {
       <div>
         <h1 className="font-semibold text-2xl tracking-tight">Focus</h1>
         <p className="text-muted-foreground text-sm">
-          Save or discard links one by one.
+          Save or discard links one by one. Press ? for shortcuts.
         </p>
       </div>
 

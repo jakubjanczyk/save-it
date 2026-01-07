@@ -1431,7 +1431,14 @@ Tests should run on every PR:
 
 ### Phase 7: Keyboard Shortcuts
 
-81. Write tests for `useKeyboardShortcuts` hook (`lib/hooks/useKeyboardShortcuts.test.ts`)
+**Progress (done in this repo):**
+- [x] `useKeyboardShortcuts` hook + tests (`hooks/use-keyboard-shortcuts.ts`, `hooks/use-keyboard-shortcuts.test.tsx`)
+- [x] `KeyboardShortcuts` help overlay + tests (`components/keyboard-shortcuts.tsx`, `components/keyboard-shortcuts.test.tsx`)
+- [x] Integrated shortcuts into Focus and Email Detail views (`app/(app)/focus/page-client.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
+- [x] Added "Press ? for shortcuts" UI hints (`app/(app)/focus/page.tsx`, `components/email-detail-view.tsx`)
+- [x] E2E keyboard shortcuts spec drafted (`e2e/keyboard.spec.ts`)
+
+81. Write tests for `useKeyboardShortcuts` hook (`hooks/use-keyboard-shortcuts.test.tsx`)
     - Test each shortcut triggers correct action
     - Test shortcuts disabled when input focused
     - Test arrow keys in Focus View
@@ -1475,7 +1482,7 @@ Tests should run on every PR:
 ### Phase 9: Email Completion
 
 **Progress (done in this repo):**
-- [x] Steps 97–100 (except keyboard shortcut): `emails.markAsRead` action + tests + UI wiring; hide marked-as-read emails (`convex/emails.ts`, `convex/emails.test.ts`, `components/email-detail-view.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
+- [x] Steps 97–100: `emails.markAsRead` action + tests + UI wiring; hide marked-as-read emails (`convex/emails.ts`, `convex/emails.test.ts`, `components/email-detail-view.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
 
 97. Write tests for emails.markAsRead action (`convex/emails.test.ts`)
     - Test pending links discarded

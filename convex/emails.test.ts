@@ -493,6 +493,46 @@ test("fetchFromGmail sets extractionError when extraction fails", async () => {
   }
 });
 
+test("listWithPendingLinks includes emails with actioned links but not marked as read", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      raindropId: "r1",
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  const result = await t.query(listWithPendingLinks, {});
+  expect(result).toHaveLength(1);
+  expect(result[0]?._id).toBe(emailId);
+  expect(result[0]?.pendingLinkCount).toBe(0);
+});
+
 test("markAsRead calls Gmail modify endpoint", async () => {
   const t = convexTest(schema, modules);
 
