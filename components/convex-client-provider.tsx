@@ -9,14 +9,10 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
 
   const client = useMemo(() => {
     if (!convexUrl) {
-      return null;
+      throw new Error("Missing NEXT_PUBLIC_CONVEX_URL");
     }
     return new ConvexReactClient(convexUrl);
   }, [convexUrl]);
-
-  if (!client) {
-    return children;
-  }
 
   return <ConvexProvider client={client}>{children}</ConvexProvider>;
 }

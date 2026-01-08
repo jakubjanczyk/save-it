@@ -4,23 +4,25 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-export interface GmailConnectionProps {
+export interface OAuthConnectionProps {
+  serviceName: string;
   connected: boolean;
   connectHref: string;
   disabled?: boolean;
   onDisconnect: () => Promise<void> | void;
 }
 
-export function GmailConnection({
+export function OAuthConnection({
+  serviceName,
   connected,
   connectHref,
   disabled,
   onDisconnect,
-}: GmailConnectionProps) {
+}: OAuthConnectionProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
-        <div className="font-medium">Gmail</div>
+        <div className="font-medium">{serviceName}</div>
         <div className="text-muted-foreground text-sm">
           {connected ? "Connected" : "Not connected"}
         </div>

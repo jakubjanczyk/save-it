@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { GmailConnectionCard } from "@/components/gmail-connection-card";
-import { RaindropConnectionCard } from "@/components/raindrop-connection-card";
+import { GmailConnectionCard } from "@/components/connections/gmail-connection-card";
+import { RaindropConnectionCard } from "@/components/connections/raindrop-connection-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,

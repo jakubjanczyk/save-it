@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
-import { GmailConnection } from "./gmail-connection";
+import { OAuthConnection } from "./oauth-connection";
 
 afterEach(() => {
   cleanup();
@@ -10,14 +10,16 @@ afterEach(() => {
 
 test("shows Connect when disconnected", () => {
   const rendered = render(
-    <GmailConnection
+    <OAuthConnection
       connected={false}
       connectHref="/api/auth/google"
       onDisconnect={() => undefined}
+      serviceName="Gmail"
     />
   );
 
   expect(rendered.getByText("Not connected")).toBeInTheDocument();
+  expect(rendered.getByText("Gmail")).toBeInTheDocument();
   expect(rendered.getByRole("link", { name: "Connect" })).toHaveAttribute(
     "href",
     "/api/auth/google"
@@ -26,10 +28,11 @@ test("shows Connect when disconnected", () => {
 
 test("does not show Disconnect when disconnected", () => {
   const rendered = render(
-    <GmailConnection
+    <OAuthConnection
       connected={false}
       connectHref="/api/auth/google"
       onDisconnect={() => undefined}
+      serviceName="Gmail"
     />
   );
 
@@ -40,10 +43,11 @@ test("does not show Disconnect when disconnected", () => {
 
 test("shows Disconnect when connected", () => {
   const rendered = render(
-    <GmailConnection
+    <OAuthConnection
       connected
       connectHref="/api/auth/google"
       onDisconnect={() => undefined}
+      serviceName="Gmail"
     />
   );
 
@@ -56,10 +60,11 @@ test("calls onDisconnect when Disconnect is clicked", async () => {
   const user = userEvent.setup();
 
   const rendered = render(
-    <GmailConnection
+    <OAuthConnection
       connected
       connectHref="/api/auth/google"
       onDisconnect={onDisconnect}
+      serviceName="Gmail"
     />
   );
 
