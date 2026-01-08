@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { GmailConnectionCard } from "@/components/connections/gmail-connection-card";
-import { RaindropConnectionCard } from "@/components/connections/raindrop-connection-card";
+import { ConnectionsCard } from "@/components/connections/connections-card";
+import { EmailFetchSettingsCard } from "@/components/settings/email-fetch-settings-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,8 +35,8 @@ export default function SettingsPage() {
         </CardFooter>
       </Card>
 
-      <GmailConnectionCard />
-      <RaindropConnectionCard />
+      <EmailFetchSettingsCard />
+      <ConnectionsCard />
     </div>
   );
 }

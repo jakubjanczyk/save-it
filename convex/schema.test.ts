@@ -5,7 +5,7 @@ import schema from "./schema";
 describe("convex schema", () => {
   test("exports expected tables", () => {
     expect(Object.keys(schema.tables).sort()).toEqual(
-      ["emails", "links", "oauthTokens", "senders"].sort()
+      ["emails", "links", "oauthTokens", "senders", "settings"].sort()
     );
   });
 
@@ -52,6 +52,13 @@ describe("convex schema", () => {
     expect(schema.tables.oauthTokens[" indexes"]()).toContainEqual({
       indexDescriptor: "by_type",
       fields: ["type"],
+    });
+  });
+
+  test("defines settings.by_key index", () => {
+    expect(schema.tables.settings[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_key",
+      fields: ["key"],
     });
   });
 });

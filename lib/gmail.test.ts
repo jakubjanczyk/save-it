@@ -77,6 +77,35 @@ test("fetchEmails includes is:unread in the query string", async () => {
   expect(url.searchParams.get("q")).toBe("is:unread from:a@example.com");
 });
 
+test("fetchEmails includes maxResults when provided", async () => {
+  let requestUrl: string | null = null;
+
+  const fetcher = (input: string) => {
+    requestUrl = input;
+    return Promise.resolve(
+      new Response(JSON.stringify({ messages: [] }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      })
+    );
+  };
+
+  await Effect.runPromise(
+    fetchEmails("token", ["a@example.com"], {
+      baseUrl: "https://example.test",
+      fetcher,
+      maxResults: 7,
+    })
+  );
+
+  if (!requestUrl) {
+    throw new Error("Expected requestUrl");
+  }
+
+  const url = new URL(requestUrl);
+  expect(url.searchParams.get("maxResults")).toBe("7");
+});
+
 test("fetchEmails fails with GmailTokenExpired on 401", async () => {
   const fetcher = () =>
     Promise.resolve(new Response("Unauthorized", { status: 401 }));

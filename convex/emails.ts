@@ -12,7 +12,9 @@ import {
 } from "../lib/gmail";
 import { refreshGoogleAccessToken } from "../lib/google-oauth";
 import { extractLinks } from "../lib/link-extractor";
+import { parseEmailFetchLimit } from "../lib/settings";
 
+import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "../lib/settings-keys";
 import {
   action,
   internalMutation,
@@ -56,6 +58,13 @@ const listSenders: FunctionReference<
   Record<string, never>,
   SenderDoc[]
 > = makeFunctionReference("senders:listSenders");
+
+const getSetting: FunctionReference<
+  "query",
+  "public",
+  { key: string },
+  string | null
+> = makeFunctionReference("settings:get");
 
 const storeEmailRef = makeFunctionReference(
   "emails:storeEmail"
@@ -190,6 +199,10 @@ export const fetchFromGmail = action({
       return { fetched: 0 };
     }
 
+    const emailFetchLimit = parseEmailFetchLimit(
+      await ctx.runQuery(getSetting, { key: EMAIL_FETCH_LIMIT_SETTING_KEY })
+    );
+
     const loadTokens = async (): Promise<StoredTokens> => {
       const tokens = await ctx.runQuery(getTokens, {});
       if (!tokens) {
@@ -237,10 +250,11 @@ export const fetchFromGmail = action({
       persistTokens,
       (accessToken) =>
         pipe(
-          fetchEmails(accessToken, senderPatterns),
+          fetchEmails(accessToken, senderPatterns, {
+            maxResults: emailFetchLimit,
+          }),
           Effect.flatMap((messages) =>
-            // TEMP DEBUG: only fetch 1 email to make it easier to diagnose LLM timeouts.
-            Effect.forEach(messages.slice(0, 1), (message) =>
+            Effect.forEach(messages.slice(0, emailFetchLimit), (message) =>
               pipe(
                 fetchMessageFull(accessToken, message.id),
                 Effect.flatMap((fullMessage) => {

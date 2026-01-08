@@ -97,6 +97,7 @@ interface GmailListMessagesResponse {
 interface GmailOptions {
   baseUrl?: string;
   fetcher?: Fetcher;
+  maxResults?: number;
   retryBase?: Duration.DurationInput;
   retryFactor?: number;
   retryMaxRetries?: number;
@@ -202,6 +203,12 @@ export function fetchEmails(
 
   const listUrl = new URL("/gmail/v1/users/me/messages", baseUrl);
   listUrl.searchParams.set("q", buildGmailQuery(senderPatterns));
+  if (options?.maxResults != null) {
+    const maxResults = Math.floor(options.maxResults);
+    if (Number.isFinite(maxResults) && maxResults > 0) {
+      listUrl.searchParams.set("maxResults", maxResults.toString());
+    }
+  }
 
   const request = Effect.tryPromise({
     try: async () => {

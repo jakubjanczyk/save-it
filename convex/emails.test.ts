@@ -4,6 +4,8 @@ import type { GenericId } from "convex/values";
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
 
+import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "../lib/settings-keys";
+
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -58,6 +60,13 @@ const markAsRead: FunctionReference<
   { emailId: GenericId<"emails"> },
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
+
+const setSetting: FunctionReference<
+  "mutation",
+  "public",
+  { key: string; value: string },
+  null
+> = makeFunctionReference("settings:set");
 
 function encodeBase64Url(value: string) {
   const base64 = Buffer.from(value, "utf-8").toString("base64");
@@ -128,6 +137,71 @@ test("fetchFromGmail returns fetched=1 for a new email", async () => {
   try {
     const result = await t.action(fetchFromGmail, {});
     expect(result.fetched).toBe(1);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("fetchFromGmail uses configured email fetch limit", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+  await t.mutation(setSetting, {
+    key: EMAIL_FETCH_LIMIT_SETTING_KEY,
+    value: "2",
+  });
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      expect(url.searchParams.get("maxResults")).toBe("2");
+      return Promise.resolve(
+        new Response(JSON.stringify({ messages: [{ id: "m1" }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      const html = `<a href="https://substack.com/app-link/post/abc">Read</a>`;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: "m1",
+            internalDate: "1700000000000",
+            payload: {
+              headers: [
+                { name: "From", value: "newsletter@substack.com" },
+                { name: "Subject", value: "Hello" },
+              ],
+              parts: [
+                {
+                  body: { data: encodeBase64Url(html) },
+                  mimeType: "text/html",
+                },
+              ],
+            },
+          }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(fetchFromGmail, {});
   } finally {
     restoreFetch();
   }

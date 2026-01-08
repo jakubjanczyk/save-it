@@ -13,6 +13,7 @@ import type * as googleauth from "../googleauth.js";
 import type * as links from "../links.js";
 import type * as raindropauth from "../raindropauth.js";
 import type * as senders from "../senders.js";
+import type * as settings from "../settings.js";
 
 import type {
   ApiFromModules,
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   links: typeof links;
   raindropauth: typeof raindropauth;
   senders: typeof senders;
+  settings: typeof settings;
 }>;
 
 /**
