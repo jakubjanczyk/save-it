@@ -1,43 +1,41 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+
 import {
-  motion,
-  type TargetAndTransition,
-  type Transition,
-  useReducedMotion,
-} from "framer-motion";
-import { Check, X } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-
-const feedbackDurationMs = 1200;
-
-export interface FocusViewItem {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  email: {
-    id: string;
-    subject: string;
-    from: string;
-    receivedAt: number;
-  };
-}
+  FEEDBACK_DURATION_MS,
+  formatProgressLabel,
+  getFeedbackKey,
+  getMotionForFeedback,
+} from "@/components/focus/focus-feedback";
+import {
+  FocusActions,
+  FocusFeedbackOverlay,
+  FocusHeader,
+  FocusLinkDetails,
+} from "@/components/focus/focus-parts";
+import {
+  getSwipeAction,
+  isInteractiveTarget,
+} from "@/components/focus/focus-swipe";
+import type {
+  FocusFeedbackAction,
+  FocusViewItem,
+} from "@/components/focus/types";
+import { Card, CardContent } from "@/components/ui/card";
 
 export interface FocusViewProps {
   item: FocusViewItem;
   position: number;
   total: number;
   busy?: boolean;
-  feedbackAction?: "save" | "discard" | null;
+  feedbackAction?: FocusFeedbackAction;
   onSave: () => Promise<void> | void;
   onDiscard: () => Promise<void> | void;
   onFeedbackComplete?: () => void;
 }
+export type { FocusViewItem } from "@/components/focus/types";
 
 export function FocusView({
   busy = false,
@@ -49,7 +47,7 @@ export function FocusView({
   position,
   total,
 }: FocusViewProps) {
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useReducedMotion() ?? false;
   const swipeState = useRef<{
     pointerId: number;
     startX: number;
@@ -57,18 +55,27 @@ export function FocusView({
   } | null>(null);
 
   const feedbackCompleteRef = useRef(false);
-  const prevFeedbackActionRef = useRef<FocusViewProps["feedbackAction"]>(null);
-  const prevItemIdRef = useRef(item.id);
+  const feedbackKeyRef = useRef<string | null>(null);
 
-  if (prevFeedbackActionRef.current !== feedbackAction) {
-    prevFeedbackActionRef.current = feedbackAction;
+  const feedbackKey = getFeedbackKey(item.id, feedbackAction);
+  if (feedbackKeyRef.current !== feedbackKey) {
+    feedbackKeyRef.current = feedbackKey;
     feedbackCompleteRef.current = false;
   }
 
-  if (prevItemIdRef.current !== item.id) {
-    prevItemIdRef.current = item.id;
-    feedbackCompleteRef.current = false;
-  }
+  const onFeedbackCompleteRef = useRef(onFeedbackComplete);
+  useEffect(() => {
+    onFeedbackCompleteRef.current = onFeedbackComplete;
+  }, [onFeedbackComplete]);
+
+  const completeFeedbackOnce = useCallback(() => {
+    if (feedbackCompleteRef.current) {
+      return;
+    }
+
+    feedbackCompleteRef.current = true;
+    onFeedbackCompleteRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!(feedbackAction && reducedMotion)) {
@@ -76,69 +83,29 @@ export function FocusView({
     }
 
     const timer = setTimeout(() => {
-      if (feedbackCompleteRef.current) {
-        return;
-      }
-
-      feedbackCompleteRef.current = true;
-      onFeedbackComplete?.();
-    }, feedbackDurationMs);
+      completeFeedbackOnce();
+    }, FEEDBACK_DURATION_MS);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [feedbackAction, onFeedbackComplete, reducedMotion]);
+  }, [completeFeedbackOnce, feedbackAction, reducedMotion]);
 
   const progressLabel = useMemo(() => {
-    const safeTotal = Math.max(1, total);
-    const safePosition = Math.min(Math.max(1, position), safeTotal);
-    return `${safePosition} of ${safeTotal}`;
+    return formatProgressLabel(position, total);
   }, [position, total]);
 
-  let overlay: null | { className: string; icon: ReactNode; label: string } =
-    null;
+  const { animate, transition } = useMemo(
+    () =>
+      getMotionForFeedback({
+        action: feedbackAction,
+        reducedMotion,
+      }),
+    [feedbackAction, reducedMotion]
+  );
 
-  if (feedbackAction === "save") {
-    overlay = {
-      className:
-        "border-emerald-500/40 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
-      icon: <Check className="h-5 w-5" />,
-      label: "Saved",
-    };
-  } else if (feedbackAction === "discard") {
-    overlay = {
-      className: "border-destructive/40 bg-destructive/20 text-destructive",
-      icon: <X className="h-5 w-5" />,
-      label: "Discarded",
-    };
-  }
-
-  let animate: TargetAndTransition = { opacity: 1, rotate: 0, x: 0 };
-  let transition: Transition = {
-    duration: 0.22,
-    ease: "easeInOut",
-  };
-  if (feedbackAction && !reducedMotion) {
-    if (feedbackAction === "save") {
-      animate = {
-        opacity: [1, 1, 0],
-        rotate: [0, 0, 2],
-        x: [0, 0, 260],
-      };
-    } else {
-      animate = {
-        opacity: [1, 1, 0],
-        rotate: [0, 0, -2],
-        x: [0, 0, -260],
-      };
-    }
-
-    transition = {
-      duration: feedbackDurationMs / 1000,
-      ease: "easeInOut",
-      times: [0, 0.7, 1],
-    };
-  }
+  const disableInteractions = busy || Boolean(feedbackAction);
+  const overlayAction = feedbackAction;
 
   return (
     <motion.div
@@ -148,39 +115,26 @@ export function FocusView({
           return;
         }
 
-        if (feedbackCompleteRef.current) {
-          return;
-        }
-
-        feedbackCompleteRef.current = true;
-        onFeedbackComplete?.();
+        completeFeedbackOnce();
       }}
       transition={transition}
     >
-      <Card className={cn(overlay ? "relative" : undefined)}>
-        <CardHeader className="gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="leading-snug">{item.email.subject}</CardTitle>
-            <span className="rounded bg-muted px-2 py-1 font-medium text-xs">
-              {progressLabel}
-            </span>
-          </div>
-          <div className="text-muted-foreground text-sm">{item.email.from}</div>
-        </CardHeader>
+      <Card className={overlayAction ? "relative" : undefined}>
+        <FocusHeader
+          from={item.email.from}
+          progress={progressLabel}
+          subject={item.email.subject}
+        />
         <CardContent className="grid gap-4">
           <div
             className="grid gap-2"
             onPointerDown={(event) => {
-              if (busy || feedbackAction) {
+              if (disableInteractions) {
                 return;
               }
 
-              const target = event.target;
-              if (target instanceof HTMLElement) {
-                const tagName = target.tagName.toLowerCase();
-                if (tagName === "button" || tagName === "a") {
-                  return;
-                }
+              if (isInteractiveTarget(event.target)) {
+                return;
               }
 
               swipeState.current = {
@@ -193,7 +147,7 @@ export function FocusView({
               const state = swipeState.current;
               swipeState.current = null;
 
-              if (!state || busy || feedbackAction) {
+              if (!state || disableInteractions) {
                 return;
               }
 
@@ -204,11 +158,12 @@ export function FocusView({
               const dx = event.clientX - state.startX;
               const dy = event.clientY - state.startY;
 
-              if (Math.abs(dx) < 90 || Math.abs(dx) < Math.abs(dy)) {
+              const action = getSwipeAction(dx, dy);
+              if (!action) {
                 return;
               }
 
-              if (dx > 0) {
+              if (action === "save") {
                 await onSave();
                 return;
               }
@@ -216,61 +171,21 @@ export function FocusView({
               await onDiscard();
             }}
           >
-            <div className="font-semibold text-lg leading-snug">
-              {item.title}
-            </div>
-            <a
-              className="truncate text-muted-foreground text-sm underline underline-offset-2"
-              href={item.url}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {item.url}
-            </a>
-            <div className="text-sm">{item.description}</div>
-            <div className="text-muted-foreground text-xs">
-              Swipe left to discard, right to save.
-            </div>
+            <FocusLinkDetails
+              description={item.description}
+              title={item.title}
+              url={item.url}
+            />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              disabled={busy || Boolean(feedbackAction)}
-              onClick={async () => {
-                await onSave();
-              }}
-            >
-              Save
-            </Button>
-            <Button
-              disabled={busy || Boolean(feedbackAction)}
-              onClick={async () => {
-                await onDiscard();
-              }}
-              variant="secondary"
-            >
-              Discard
-            </Button>
-            <Button asChild className="ml-auto" variant="outline">
-              <a href={item.url} rel="noreferrer" target="_blank">
-                Open
-              </a>
-            </Button>
-          </div>
+          <FocusActions
+            disabled={disableInteractions}
+            onDiscard={onDiscard}
+            onSave={onSave}
+            url={item.url}
+          />
         </CardContent>
-        {overlay ? (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-md bg-black/15 backdrop-blur-2xl dark:bg-black/35">
-            <div
-              className={cn(
-                "flex items-center gap-2 rounded-full border px-4 py-2 font-semibold text-base shadow-sm",
-                overlay.className
-              )}
-            >
-              {overlay.icon}
-              {overlay.label}
-            </div>
-          </div>
-        ) : null}
+        {overlayAction ? <FocusFeedbackOverlay action={overlayAction} /> : null}
       </Card>
     </motion.div>
   );
