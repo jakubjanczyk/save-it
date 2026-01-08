@@ -4,13 +4,12 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
+import { requireEnv } from "@/lib/require-env";
+
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
 
   const client = useMemo(() => {
-    if (!convexUrl) {
-      throw new Error("Missing NEXT_PUBLIC_CONVEX_URL");
-    }
     return new ConvexReactClient(convexUrl);
   }, [convexUrl]);
 

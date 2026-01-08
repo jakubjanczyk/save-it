@@ -1,46 +1,21 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { type FunctionReference, makeFunctionReference } from "convex/server";
+import { useMutation } from "convex/react";
+import { useRouter } from "next/navigation";
 
+import {
+  clearGoogleTokens,
+  clearRaindropTokens,
+} from "@/components/connections/convex-refs";
 import { OAuthConnection } from "@/components/connections/oauth-connection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 
-type Tokens = Record<string, unknown>;
-
-const getGoogleTokens: FunctionReference<
-  "query",
-  "public",
-  Record<string, never>,
-  Tokens | null
-> = makeFunctionReference("googleauth:getTokens");
-
-const clearGoogleTokens: FunctionReference<
-  "mutation",
-  "public",
-  Record<string, never>,
-  null
-> = makeFunctionReference("googleauth:clearTokens");
-
-const getRaindropTokens: FunctionReference<
-  "query",
-  "public",
-  Record<string, never>,
-  Tokens | null
-> = makeFunctionReference("raindropauth:getTokens");
-
-const clearRaindropTokens: FunctionReference<
-  "mutation",
-  "public",
-  Record<string, never>,
-  null
-> = makeFunctionReference("raindropauth:clearTokens");
-
-export function ConnectionsCard() {
-  const googleTokens = useQuery(getGoogleTokens, {});
-  const raindropTokens = useQuery(getRaindropTokens, {});
+export function ConnectionsCard(props: {
+  gmailConnected: boolean;
+  raindropConnected: boolean;
+}) {
+  const router = useRouter();
 
   const disconnectGoogle = useMutation(clearGoogleTokens);
   const disconnectRaindrop = useMutation(clearRaindropTokens);
@@ -51,37 +26,31 @@ export function ConnectionsCard() {
         <CardTitle>Connections</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {googleTokens === undefined ? (
-          <Skeleton className="h-9 w-full" />
-        ) : (
-          <div data-service="gmail">
-            <OAuthConnection
-              connected={googleTokens !== null}
-              connectHref="/api/auth/google"
-              onDisconnect={async () => {
-                await disconnectGoogle({});
-              }}
-              serviceName="Gmail"
-            />
-          </div>
-        )}
+        <div data-service="gmail">
+          <OAuthConnection
+            connected={props.gmailConnected}
+            connectHref="/api/auth/google"
+            onDisconnect={async () => {
+              await disconnectGoogle({});
+              router.refresh();
+            }}
+            serviceName="Gmail"
+          />
+        </div>
 
         <Separator />
 
-        {raindropTokens === undefined ? (
-          <Skeleton className="h-9 w-full" />
-        ) : (
-          <div data-service="raindrop">
-            <OAuthConnection
-              connected={raindropTokens !== null}
-              connectHref="/api/auth/raindrop"
-              onDisconnect={async () => {
-                await disconnectRaindrop({});
-              }}
-              serviceName="Raindrop"
-            />
-          </div>
-        )}
+        <div data-service="raindrop">
+          <OAuthConnection
+            connected={props.raindropConnected}
+            connectHref="/api/auth/raindrop"
+            onDisconnect={async () => {
+              await disconnectRaindrop({});
+              router.refresh();
+            }}
+            serviceName="Raindrop"
+          />
+        </div>
       </CardContent>
     </Card>
   );

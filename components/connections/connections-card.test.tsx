@@ -3,25 +3,27 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { ConnectionsCard } from "./connections-card";
 
-const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
 
 vi.mock("convex/react", () => ({
   useMutation: (...args: unknown[]) => useMutationMock(...args),
-  useQuery: (...args: unknown[]) => useQueryMock(...args),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => undefined }),
 }));
 
 afterEach(() => {
   cleanup();
-  useQueryMock.mockReset();
   useMutationMock.mockReset();
 });
 
 test("uses Google connect URL", () => {
-  useQueryMock.mockReturnValue(null);
   useMutationMock.mockReturnValue(() => null);
 
-  const rendered = render(<ConnectionsCard />);
+  const rendered = render(
+    <ConnectionsCard gmailConnected={false} raindropConnected={false} />
+  );
   const row = rendered.container.querySelector(
     "[data-service='gmail']"
   ) as HTMLElement;
@@ -33,10 +35,11 @@ test("uses Google connect URL", () => {
 });
 
 test("uses Raindrop connect URL", () => {
-  useQueryMock.mockReturnValue(null);
   useMutationMock.mockReturnValue(() => null);
 
-  const rendered = render(<ConnectionsCard />);
+  const rendered = render(
+    <ConnectionsCard gmailConnected={false} raindropConnected={false} />
+  );
   const row = rendered.container.querySelector(
     "[data-service='raindrop']"
   ) as HTMLElement;
