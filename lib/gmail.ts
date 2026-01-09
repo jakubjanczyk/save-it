@@ -7,6 +7,7 @@ import {
   GmailTokenExpired,
   GmailTokenRefreshFailed,
 } from "./errors";
+import { isRecord } from "./type-guards/is-record";
 
 interface ParsedHttpError {
   body?: string;
@@ -31,10 +32,6 @@ export interface StoredTokens {
   accessToken: string;
   expiresAt: number;
   refreshToken: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function parseHttpError(error: unknown): ParsedHttpError | null {

@@ -6,6 +6,7 @@ import {
   RaindropRateLimited,
   RaindropSaveFailed,
 } from "./errors";
+import { isRecord } from "./type-guards/is-record";
 
 export type RaindropError =
   | RaindropAuthError
@@ -17,10 +18,6 @@ interface ParsedHttpError {
   body?: string;
   retryAfter?: number;
   status: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function parseHttpError(error: unknown): ParsedHttpError | null {

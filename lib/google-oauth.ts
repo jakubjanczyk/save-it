@@ -6,9 +6,7 @@ interface GoogleRefreshResponse {
   refresh_token?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import { isRecord } from "./type-guards/is-record";
 
 function parseRefreshResponse(value: unknown): GoogleRefreshResponse | null {
   if (!isRecord(value)) {

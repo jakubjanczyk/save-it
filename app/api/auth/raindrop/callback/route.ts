@@ -2,6 +2,8 @@ import { fetchMutation } from "convex/nextjs";
 import { type FunctionReference, makeFunctionReference } from "convex/server";
 import { NextResponse } from "next/server";
 
+import { isRecord } from "@/lib/type-guards/is-record";
+
 const RAINDROP_OAUTH_TOKEN_URL = "https://raindrop.io/oauth/access_token";
 
 interface RaindropAuthTokens extends Record<string, unknown> {
@@ -28,10 +30,6 @@ interface RaindropTokenResponse {
   access_token: string;
   expires_in: number;
   refresh_token?: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function parseTokenResponse(value: unknown): RaindropTokenResponse | null {

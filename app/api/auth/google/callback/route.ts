@@ -2,6 +2,8 @@ import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { type FunctionReference, makeFunctionReference } from "convex/server";
 import { NextResponse } from "next/server";
 
+import { isRecord } from "@/lib/type-guards/is-record";
+
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const OAUTH_STATE_COOKIE = "google_oauth_state";
 
@@ -36,10 +38,6 @@ interface GoogleTokenResponse {
   access_token: string;
   expires_in: number;
   refresh_token?: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function parseTokenResponse(value: unknown): GoogleTokenResponse | null {

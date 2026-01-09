@@ -7,10 +7,7 @@ import {
 } from "./errors";
 import { type ExtractedLink, llmExtractLinks } from "./llm-extractor";
 import { checkSubstackPattern, type DetectedLink } from "./substack-detector";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import { isRecord } from "./type-guards/is-record";
 
 export function mapExtractionLlmError(error: unknown) {
   return new ExtractionLLMError({

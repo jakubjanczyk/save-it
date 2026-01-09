@@ -1,6 +1,4 @@
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import { isRecord } from "../type-guards/is-record";
 
 export function summarizeError(error: unknown): Record<string, unknown> {
   if (!isRecord(error)) {
