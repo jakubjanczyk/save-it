@@ -12,6 +12,7 @@ import {
 } from "../lib/gmail";
 import { refreshGoogleAccessToken } from "../lib/google-oauth";
 import { extractLinks } from "../lib/link-extractor";
+import { summarizeError } from "../lib/logging/error-summary";
 import { findSenderId } from "../lib/senders/sender-matcher";
 import { parseEmailFetchLimit } from "../lib/settings";
 
@@ -124,42 +125,6 @@ const markEmailAsReadRef = makeFunctionReference(
   null
 >;
 
-function _errorSummary(error: unknown): Record<string, unknown> {
-  if (typeof error !== "object" || error === null) {
-    return { value: error };
-  }
-
-  const record = error as Record<string, unknown>;
-
-  let cause: Record<string, unknown> | undefined;
-
-  if ("cause" in record && record.cause != null) {
-    const recordCause = record.cause;
-
-    if (typeof recordCause === "object" && recordCause !== null) {
-      const causeRecord = recordCause as { name?: unknown; message?: unknown };
-
-      cause = {
-        name:
-          typeof causeRecord.name === "string" ? causeRecord.name : undefined,
-        message:
-          typeof causeRecord.message === "string"
-            ? causeRecord.message
-            : undefined,
-      };
-    } else {
-      cause = { value: recordCause };
-    }
-  }
-
-  return {
-    name: typeof record.name === "string" ? record.name : undefined,
-    tag: typeof record._tag === "string" ? record._tag : undefined,
-    message: typeof record.message === "string" ? record.message : undefined,
-    cause,
-  };
-}
-
 function createGoogleTokenFlow(ctx: ActionCtx) {
   const loadTokens = async (): Promise<StoredTokens> => {
     const tokens = await ctx.runQuery(getTokens, {});
@@ -261,7 +226,7 @@ export const fetchFromGmail = action({
                             llmModel:
                               process.env.LLM_MODEL ?? "gemini-2.5-flash",
                           },
-                          error: _errorSummary(error),
+                          error: summarizeError(error),
                         });
 
                         return {
