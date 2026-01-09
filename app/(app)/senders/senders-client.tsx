@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import type { GenericId } from "convex/values";
 import { useRouter } from "next/navigation";
 
 import { SenderForm } from "@/components/sender-form";
@@ -50,7 +49,7 @@ export function SendersClient(props: { senders: SenderDoc[] }) {
         <CardContent>
           <SenderList
             onDelete={async (senderId) => {
-              await remove({ senderId: senderId as GenericId<"senders"> });
+              await remove({ senderId });
               router.refresh();
             }}
             senders={sortedSenders.map((sender) => ({

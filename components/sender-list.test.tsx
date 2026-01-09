@@ -1,5 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { GenericId } from "convex/values";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { SenderList } from "./sender-list";
@@ -21,8 +22,12 @@ test("renders sender rows", () => {
     <SenderList
       onDelete={() => undefined}
       senders={[
-        { id: "1", email: "a@b.com", name: "Newsletter A" },
-        { id: "2", email: "c@d.com" },
+        {
+          id: "1" as GenericId<"senders">,
+          email: "a@b.com",
+          name: "Newsletter A",
+        },
+        { id: "2" as GenericId<"senders">, email: "c@d.com" },
       ]}
     />
   );
@@ -36,7 +41,10 @@ test("calls onDelete when remove is clicked", async () => {
   const onDelete = vi.fn();
   const user = userEvent.setup();
   const rendered = render(
-    <SenderList onDelete={onDelete} senders={[{ id: "1", email: "a@b.com" }]} />
+    <SenderList
+      onDelete={onDelete}
+      senders={[{ id: "1" as GenericId<"senders">, email: "a@b.com" }]}
+    />
   );
 
   await user.click(rendered.getByRole("button", { name: "Remove a@b.com" }));

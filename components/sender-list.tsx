@@ -1,16 +1,18 @@
 "use client";
 
+import type { GenericId } from "convex/values";
+
 import { Button } from "@/components/ui/button";
 
 export interface SenderListItem {
-  id: string;
+  id: GenericId<"senders">;
   email: string;
   name?: string;
 }
 
 export interface SenderListProps {
   senders: readonly SenderListItem[];
-  onDelete: (senderId: string) => Promise<void> | void;
+  onDelete: (senderId: GenericId<"senders">) => Promise<void> | void;
 }
 
 export function SenderList({ onDelete, senders }: SenderListProps) {
