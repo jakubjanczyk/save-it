@@ -6,6 +6,8 @@ import {
   RaindropRateLimited,
   RaindropSaveFailed,
 } from "./errors";
+import type { Fetcher } from "./http/fetch-json";
+import { fetchJson } from "./http/fetch-json";
 import { isRecord } from "./type-guards/is-record";
 
 export type RaindropError =
@@ -73,14 +75,6 @@ export function mapRaindropError(error: unknown, url?: string) {
   });
 }
 
-interface FetchFailure {
-  body?: string;
-  retryAfter?: number;
-  status: number;
-}
-
-type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
-
 interface RaindropOptions {
   baseUrl?: string;
   fetcher?: Fetcher;
@@ -90,38 +84,6 @@ interface RaindropOptions {
 }
 
 const defaultRaindropBaseUrl = "https://api.raindrop.io";
-
-function parseRetryAfter(headerValue: string | null): number | undefined {
-  if (!headerValue) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(headerValue, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-async function fetchJson(fetcher: Fetcher, url: string, init: RequestInit) {
-  const response = await fetcher(url, init);
-
-  if (!response.ok) {
-    let body: string | undefined;
-    try {
-      body = await response.text();
-    } catch {
-      body = undefined;
-    }
-
-    const failure: FetchFailure = {
-      body,
-      retryAfter: parseRetryAfter(response.headers.get("retry-after")),
-      status: response.status,
-    };
-
-    throw failure;
-  }
-
-  return await response.json();
-}
 
 function getFetcher(options?: RaindropOptions): Fetcher {
   if (options?.fetcher) {

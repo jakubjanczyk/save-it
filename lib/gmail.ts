@@ -7,6 +7,8 @@ import {
   GmailTokenExpired,
   GmailTokenRefreshFailed,
 } from "./errors";
+import type { Fetcher } from "./http/fetch-json";
+import { fetchJson } from "./http/fetch-json";
 import { isRecord } from "./type-guards/is-record";
 
 interface ParsedHttpError {
@@ -79,14 +81,6 @@ export function mapGmailError(error: unknown) {
   });
 }
 
-interface FetchFailure {
-  body?: string;
-  retryAfter?: number;
-  status: number;
-}
-
-type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
-
 interface GmailListMessagesResponse {
   messages?: GmailMessage[];
 }
@@ -101,38 +95,6 @@ interface GmailOptions {
 }
 
 const defaultGmailBaseUrl = "https://gmail.googleapis.com";
-
-function parseRetryAfter(headerValue: string | null): number | undefined {
-  if (!headerValue) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(headerValue, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-async function fetchJson(fetcher: Fetcher, url: string, init: RequestInit) {
-  const response = await fetcher(url, init);
-
-  if (!response.ok) {
-    let body: string | undefined;
-    try {
-      body = await response.text();
-    } catch {
-      body = undefined;
-    }
-
-    const failure: FetchFailure = {
-      body,
-      retryAfter: parseRetryAfter(response.headers.get("retry-after")),
-      status: response.status,
-    };
-
-    throw failure;
-  }
-
-  return await response.json();
-}
 
 function getFetcher(options?: GmailOptions): Fetcher {
   if (options?.fetcher) {
