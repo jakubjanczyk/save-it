@@ -1,6 +1,38 @@
 import { parseHTML } from "linkedom";
 import TurndownService from "turndown";
 
+export function stripNewsletterHtmlForLlm(html: string) {
+  const cleaned = removeNoiseTags(html);
+
+  const turndown = new TurndownService();
+  const wrapped = `<!doctype html><html><body>${cleaned}</body></html>`;
+  const { document } = parseHTML(wrapped);
+
+  removeIgnoredAnchors(document.body);
+
+  return normalizeMarkdown(turndown.turndown(document.body));
+}
+
+function removeNoiseTags(html: string) {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<head[\s\S]*?<\/head>/gi, " ")
+    .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<(meta|link|base)\b[^>]*>/gi, " ")
+    .replace(/<(svg|iframe|canvas)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<img\b[^>]*>/gi, " ")
+    .replace(/<(canvas|video)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
+}
+
+function removeIgnoredAnchors(container: ParentNode) {
+  for (const anchor of Array.from(container.querySelectorAll("a"))) {
+    const text = anchor.textContent ?? "";
+    if (shouldIgnoreLinkText(text)) {
+      anchor.remove();
+    }
+  }
+}
+
 const ignoredLinkTextEquals = [
   "sign up",
   "advertise",
@@ -26,29 +58,7 @@ function shouldIgnoreLinkText(text: string) {
   );
 }
 
-export function stripNewsletterHtmlForLlm(html: string) {
-  const cleaned = html
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<head[\s\S]*?<\/head>/gi, " ")
-    .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<(meta|link|base)\b[^>]*>/gi, " ")
-    .replace(/<(svg|iframe|canvas)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<img\b[^>]*>/gi, " ")
-    .replace(/<(canvas|video)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
-
-  const turndown = new TurndownService();
-  const wrapped = `<!doctype html><html><body>${cleaned}</body></html>`;
-  const { document } = parseHTML(wrapped);
-
-  for (const anchor of Array.from(document.body.querySelectorAll("a"))) {
-    const text = anchor.textContent ?? "";
-    if (shouldIgnoreLinkText(text)) {
-      anchor.remove();
-    }
-  }
-
-  const markdown = turndown.turndown(document.body);
-
+function normalizeMarkdown(markdown: string) {
   return markdown
     .replace(/\r/g, "")
     .replace(/[ \t]+\n/g, "\n")
