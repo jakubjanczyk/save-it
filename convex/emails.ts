@@ -12,6 +12,7 @@ import {
 } from "../lib/gmail";
 import { refreshGoogleAccessToken } from "../lib/google-oauth";
 import { extractLinks } from "../lib/link-extractor";
+import { findSenderId } from "../lib/senders/sender-matcher";
 import { parseEmailFetchLimit } from "../lib/settings";
 
 import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "../lib/settings-keys";
@@ -22,9 +23,6 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
-
-const angleEmailRegex = /<([^>]+)>/;
-const tokenEmailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
 interface SenderDoc {
   _id: GenericId<"senders">;
@@ -125,34 +123,6 @@ const markEmailAsReadRef = makeFunctionReference(
   { emailId: GenericId<"emails">; processedAt: number },
   null
 >;
-
-function parseEmailAddress(fromHeader: string) {
-  const angle = fromHeader.match(angleEmailRegex);
-  if (angle?.[1]) {
-    return angle[1].trim();
-  }
-
-  const token = fromHeader.match(tokenEmailRegex);
-  return token?.[0]?.trim() ?? fromHeader.trim();
-}
-
-function senderMatches(pattern: string, email: string) {
-  const normalizedPattern = pattern.trim().toLowerCase();
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (normalizedPattern.startsWith("*@")) {
-    return normalizedEmail.endsWith(normalizedPattern.slice(1));
-  }
-
-  return normalizedEmail === normalizedPattern;
-}
-
-function findSenderId(senders: SenderDoc[], fromHeader: string) {
-  const email = parseEmailAddress(fromHeader);
-  return (
-    senders.find((sender) => senderMatches(sender.email, email))?._id ?? null
-  );
-}
 
 function _errorSummary(error: unknown): Record<string, unknown> {
   if (typeof error !== "object" || error === null) {
