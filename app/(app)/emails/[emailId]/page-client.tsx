@@ -2,31 +2,26 @@
 
 import { useAction } from "convex/react";
 import type { GenericId } from "convex/values";
-import { useParams } from "next/navigation";
 
 import { EmailDetailView } from "@/components/email-detail-view";
 
+import type { EmailListItem, LinkDoc } from "../../home-convex-refs";
 import { discardLink, markEmailAsRead, saveLink } from "../../home-convex-refs";
 
-import { EmailDetailLoading } from "./email-detail-loading";
 import { EmailDetailShortcuts } from "./email-detail-shortcuts";
-import { EmailNotInQueueCard } from "./email-not-in-queue-card";
-import { getEmailIdParam } from "./get-email-id-param";
-import { InvalidEmailCard } from "./invalid-email-card";
 import { openInNewTab } from "./open-in-new-tab";
-import { useEmailDetailData } from "./use-email-detail-data";
-import { getEmailNavigation } from "./use-email-navigation";
+import { toSelectableLinks } from "./to-selectable-links";
 import { useLinkActions } from "./use-link-actions";
 import { useLinkSelection } from "./use-link-selection";
 import { useMarkEmailAsRead } from "./use-mark-email-as-read";
 
-export function EmailDetailClient() {
-  const params = useParams();
-  const emailId = getEmailIdParam(params.emailId);
-
-  const { emails, linksLoading, listViewLinks } = useEmailDetailData({
-    emailId,
-  });
+export function EmailDetailClient(props: {
+  email: EmailListItem;
+  links: LinkDoc[];
+  nextEmailId?: GenericId<"emails">;
+  prevEmailId?: GenericId<"emails">;
+}) {
+  const listViewLinks = toSelectableLinks(props.links);
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
   const markAsRead = useAction(markEmailAsRead);
@@ -60,52 +55,40 @@ export function EmailDetailClient() {
     setSelectedLinkId,
   });
 
-  const markCurrentEmailAsRead = useMarkEmailAsRead({ emailId, markAsRead });
-
-  if (!emailId) {
-    return <InvalidEmailCard />;
-  }
-
-  if (emails === undefined) {
-    return <EmailDetailLoading />;
-  }
-
-  const { email, nextEmailId, prevEmailId } = getEmailNavigation(
-    emails,
-    emailId
-  );
-
-  if (!email) {
-    return <EmailNotInQueueCard />;
-  }
+  const markCurrentEmailAsRead = useMarkEmailAsRead({
+    emailId: props.email._id,
+    markAsRead,
+  });
 
   return (
     <>
       <EmailDetailShortcuts
         enabled={!actionBusy}
-        nextEmailId={nextEmailId}
+        nextEmailId={props.nextEmailId}
         onDiscard={discardSelected}
         onMarkAsRead={markCurrentEmailAsRead}
         onNextLink={selectNextLink}
         onOpen={openSelected}
         onPrevLink={selectPrevLink}
         onSave={saveSelected}
-        prevEmailId={prevEmailId}
+        prevEmailId={props.prevEmailId}
       />
 
       <EmailDetailView
         backHref="/"
         email={{
-          extractionError: email.extractionError,
-          from: email.from,
-          id: email._id,
-          pendingLinkCount: email.pendingLinkCount,
-          receivedAt: email.receivedAt,
-          subject: email.subject,
+          extractionError: props.email.extractionError,
+          from: props.email.from,
+          id: props.email._id,
+          pendingLinkCount: props.email.pendingLinkCount,
+          receivedAt: props.email.receivedAt,
+          subject: props.email.subject,
         }}
         links={listViewLinks}
-        linksLoading={linksLoading}
-        nextHref={nextEmailId ? `/emails/${nextEmailId}` : undefined}
+        linksLoading={false}
+        nextHref={
+          props.nextEmailId ? `/emails/${props.nextEmailId}` : undefined
+        }
         onDiscardLink={async (linkId) => {
           await discardWithSelection(linkId as GenericId<"links">);
         }}
@@ -113,7 +96,9 @@ export function EmailDetailClient() {
         onSaveLink={async (linkId) => {
           await saveWithSelection(linkId as GenericId<"links">);
         }}
-        prevHref={prevEmailId ? `/emails/${prevEmailId}` : undefined}
+        prevHref={
+          props.prevEmailId ? `/emails/${props.prevEmailId}` : undefined
+        }
         selectedLinkId={selectedLinkId ?? undefined}
       />
     </>

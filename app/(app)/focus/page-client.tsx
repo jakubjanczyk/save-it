@@ -1,24 +1,35 @@
 "use client";
 
-import { useAction, useQuery } from "convex/react";
-import { useSearchParams } from "next/navigation";
+import { useAction } from "convex/react";
+import type { GenericId } from "convex/values";
 
 import { FocusView } from "@/components/focus-view";
 
-import { discardLink, listPendingFocus, saveLink } from "../home-convex-refs";
+import { discardLink, saveLink } from "../home-convex-refs";
 
 import { FocusEmptyCard } from "./focus-empty-card";
-import { FocusLoadingCard } from "./focus-loading-card";
 import { getActiveLinkId } from "./focus-queue";
 import { FocusShortcuts } from "./focus-shortcuts";
 import { toFocusViewItem } from "./to-focus-view-item";
 import { useFocusController } from "./use-focus-controller";
 
-export function FocusClient() {
-  const searchParams = useSearchParams();
-  const requestedLinkId = getActiveLinkId(searchParams.get("linkId"));
-
-  const items = useQuery(listPendingFocus, {});
+export function FocusClient(props: {
+  items: Array<{
+    description: string;
+    email: {
+      from: string;
+      id: GenericId<"emails">;
+      receivedAt: number;
+      subject: string;
+    };
+    id: GenericId<"links">;
+    title: string;
+    url: string;
+  }>;
+  requestedLinkId: string | null;
+}) {
+  const requestedLinkId = getActiveLinkId(props.requestedLinkId);
+  const items = props.items;
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
 
@@ -28,10 +39,6 @@ export function FocusClient() {
     requestedLinkId,
     save,
   });
-
-  if (items === undefined) {
-    return <FocusLoadingCard />;
-  }
 
   if (items.length === 0) {
     if (controller.state.feedbackAction && controller.state.shownItem) {

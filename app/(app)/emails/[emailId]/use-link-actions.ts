@@ -1,6 +1,7 @@
 "use client";
 
 import type { GenericId } from "convex/values";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ export function useLinkActions(params: {
   selectedLinkId: GenericId<"links"> | null;
   setSelectedLinkId: (linkId: GenericId<"links"> | null) => void;
 }): LinkActionHandlers {
+  const router = useRouter();
   const { discard, save, selectedLinkId, setSelectedLinkId } = params;
   const [actionBusy, setActionBusy] = useState(false);
 
@@ -28,16 +30,22 @@ export function useLinkActions(params: {
       }
 
       setSelectedLinkId(linkId);
+      let succeeded = false;
       try {
         setActionBusy(true);
         await discard({ linkId });
+        succeeded = true;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Discard failed");
       } finally {
         setActionBusy(false);
       }
+
+      if (succeeded) {
+        router.refresh();
+      }
     },
-    [actionBusy, discard, setSelectedLinkId]
+    [actionBusy, discard, router, setSelectedLinkId]
   );
 
   const saveWithSelection = useCallback(
@@ -47,16 +55,22 @@ export function useLinkActions(params: {
       }
 
       setSelectedLinkId(linkId);
+      let succeeded = false;
       try {
         setActionBusy(true);
         await save({ linkId });
+        succeeded = true;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Save failed");
       } finally {
         setActionBusy(false);
       }
+
+      if (succeeded) {
+        router.refresh();
+      }
     },
-    [actionBusy, save, setSelectedLinkId]
+    [actionBusy, router, save, setSelectedLinkId]
   );
 
   const discardSelected = useCallback(async () => {
@@ -65,15 +79,21 @@ export function useLinkActions(params: {
       return;
     }
 
+    let succeeded = false;
     try {
       setActionBusy(true);
       await discard({ linkId: selected });
+      succeeded = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Discard failed");
     } finally {
       setActionBusy(false);
     }
-  }, [actionBusy, discard, selectedLinkId]);
+
+    if (succeeded) {
+      router.refresh();
+    }
+  }, [actionBusy, discard, router, selectedLinkId]);
 
   const saveSelected = useCallback(async () => {
     const selected = selectedLinkId;
@@ -81,15 +101,21 @@ export function useLinkActions(params: {
       return;
     }
 
+    let succeeded = false;
     try {
       setActionBusy(true);
       await save({ linkId: selected });
+      succeeded = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed");
     } finally {
       setActionBusy(false);
     }
-  }, [actionBusy, save, selectedLinkId]);
+
+    if (succeeded) {
+      router.refresh();
+    }
+  }, [actionBusy, router, save, selectedLinkId]);
 
   return {
     actionBusy,

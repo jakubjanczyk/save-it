@@ -1,6 +1,23 @@
+import { fetchQuery } from "convex/nextjs";
+
+import { requireEnv } from "@/lib/require-env";
+
+import { listPendingFocus } from "../home-convex-refs";
+
 import { FocusClient } from "./page-client";
 
-export default function FocusPage() {
+export const dynamic = "force-dynamic";
+
+export default async function FocusPage(props: {
+  searchParams?: { linkId?: string };
+}) {
+  const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
+  const items = await fetchQuery(listPendingFocus, {}, { url: convexUrl });
+  const requestedLinkId =
+    typeof props.searchParams?.linkId === "string"
+      ? props.searchParams.linkId
+      : null;
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <div>
@@ -10,7 +27,7 @@ export default function FocusPage() {
         </p>
       </div>
 
-      <FocusClient />
+      <FocusClient items={items} requestedLinkId={requestedLinkId} />
     </div>
   );
 }
