@@ -6,6 +6,7 @@ import { Effect } from "effect";
 import { createRaindropBookmark } from "../lib/raindrop";
 
 import {
+  type ActionCtx,
   action,
   internalMutation,
   internalQuery,
@@ -79,6 +80,23 @@ const markEmailAsReadRef: FunctionReference<
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
 
+async function finalizeEmailIfDone(
+  ctx: ActionCtx,
+  emailId: GenericId<"emails">
+) {
+  const hasPending = await ctx.runQuery(hasPendingLinksByEmailRef, { emailId });
+
+  if (hasPending) {
+    return;
+  }
+
+  try {
+    await ctx.runAction(markEmailAsReadRef, { emailId });
+  } catch {
+    // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
+  }
+}
+
 export const listByEmail = query({
   args: { emailId: v.id("emails") },
   handler: async (ctx, args) => {
@@ -110,19 +128,7 @@ export const discard = action({
       linkId: args.linkId as GenericId<"links">,
     });
 
-    const hasPending = await ctx.runQuery(hasPendingLinksByEmailRef, {
-      emailId: link.emailId as GenericId<"emails">,
-    });
-
-    if (!hasPending) {
-      try {
-        await ctx.runAction(markEmailAsReadRef, {
-          emailId: link.emailId as GenericId<"emails">,
-        });
-      } catch {
-        // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
-      }
-    }
+    await finalizeEmailIfDone(ctx, link.emailId);
 
     return null;
   },
@@ -207,19 +213,7 @@ export const save = action({
       savedAt: Date.now(),
     });
 
-    const hasPending = await ctx.runQuery(hasPendingLinksByEmailRef, {
-      emailId: link.emailId as GenericId<"emails">,
-    });
-
-    if (!hasPending) {
-      try {
-        await ctx.runAction(markEmailAsReadRef, {
-          emailId: link.emailId as GenericId<"emails">,
-        });
-      } catch {
-        // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
-      }
-    }
+    await finalizeEmailIfDone(ctx, link.emailId);
 
     return { raindropId };
   },
