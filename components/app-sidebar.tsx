@@ -1,6 +1,12 @@
 "use client";
 
-import { HomeIcon, SettingsIcon, TargetIcon, UsersIcon } from "lucide-react";
+import {
+  HomeIcon,
+  LogsIcon,
+  SettingsIcon,
+  TargetIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,6 +36,11 @@ const items = [
     title: "Senders",
     href: "/senders",
     icon: UsersIcon,
+  },
+  {
+    title: "Sync logs",
+    href: "/sync-logs",
+    icon: LogsIcon,
   },
   {
     title: "Settings",

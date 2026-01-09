@@ -5,7 +5,14 @@ import schema from "./schema";
 describe("convex schema", () => {
   test("exports expected tables", () => {
     expect(Object.keys(schema.tables).sort()).toEqual(
-      ["emails", "links", "oauthTokens", "senders", "settings"].sort()
+      [
+        "emails",
+        "links",
+        "oauthTokens",
+        "senders",
+        "settings",
+        "syncLogs",
+      ].sort()
     );
   });
 
@@ -41,6 +48,13 @@ describe("convex schema", () => {
     });
   });
 
+  test("defines links.by_emailId_url index", () => {
+    expect(schema.tables.links[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_emailId_url",
+      fields: ["emailId", "url"],
+    });
+  });
+
   test("defines links.by_status index", () => {
     expect(schema.tables.links[" indexes"]()).toContainEqual({
       indexDescriptor: "by_status",
@@ -59,6 +73,13 @@ describe("convex schema", () => {
     expect(schema.tables.settings[" indexes"]()).toContainEqual({
       indexDescriptor: "by_key",
       fields: ["key"],
+    });
+  });
+
+  test("defines syncLogs.by_attemptedAt index", () => {
+    expect(schema.tables.syncLogs[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_attemptedAt",
+      fields: ["attemptedAt"],
     });
   });
 });

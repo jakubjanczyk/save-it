@@ -42,6 +42,7 @@ export default defineSchema({
     raindropId: v.optional(v.string()),
   })
     .index("by_emailId", ["emailId"])
+    .index("by_emailId_url", ["emailId", "url"])
     .index("by_status", ["status"]),
 
   oauthTokens: defineTable({
@@ -50,4 +51,22 @@ export default defineSchema({
     refreshToken: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
   }).index("by_type", ["type"]),
+
+  syncLogs: defineTable({
+    emailId: v.id("emails"),
+    gmailId: v.string(),
+    from: v.string(),
+    receivedAt: v.number(),
+    subject: v.string(),
+    attemptedAt: v.number(),
+    status: v.union(v.literal("success"), v.literal("error")),
+    extractedLinkCount: v.number(),
+    storedLinkCount: v.number(),
+    errorMessage: v.optional(v.string()),
+    errorName: v.optional(v.string()),
+    errorTag: v.optional(v.string()),
+  })
+    .index("by_attemptedAt", ["attemptedAt"])
+    .index("by_status_attemptedAt", ["status", "attemptedAt"])
+    .index("by_emailId_attemptedAt", ["emailId", "attemptedAt"]),
 });

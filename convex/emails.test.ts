@@ -61,6 +61,13 @@ const markAsRead: FunctionReference<
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
 
+const retrySyncEmail: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { status: "success" | "error"; storedLinkCount: number }
+> = makeFunctionReference("emails:retrySyncEmail");
+
 const setSetting: FunctionReference<
   "mutation",
   "public",
@@ -271,6 +278,71 @@ test("fetchFromGmail stores link titles", async () => {
   );
   expect(links).toHaveLength(1);
   expect(links[0]?.title).toBe("Hello");
+});
+
+test("fetchFromGmail creates a sync log entry", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ messages: [{ id: "m1" }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      const html = `<a href="https://substack.com/app-link/post/abc">Read</a>`;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: "m1",
+            internalDate: "1700000000000",
+            payload: {
+              headers: [
+                { name: "From", value: "newsletter@substack.com" },
+                { name: "Subject", value: "Hello" },
+              ],
+              parts: [
+                {
+                  body: { data: encodeBase64Url(html) },
+                  mimeType: "text/html",
+                },
+              ],
+            },
+          }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(fetchFromGmail, {});
+  } finally {
+    restoreFetch();
+  }
+
+  const logs = await t.run((ctx) => ctx.db.query("syncLogs").collect());
+  expect(logs).toHaveLength(1);
+  expect(logs[0]?.status).toBe("success");
+  expect(logs[0]?.storedLinkCount).toBe(1);
 });
 
 test("fetchFromGmail refreshes access token when expired", async () => {
@@ -565,6 +637,137 @@ test("fetchFromGmail sets extractionError when extraction fails", async () => {
   } finally {
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = previousApiKey;
   }
+});
+
+test("retrySyncEmail stores links and logs the retry", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const previousApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
+
+  const restoreFetchInitial = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ messages: [{ id: "m1" }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      const html = `<a href="https://example.com/a">A</a>`;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: "m1",
+            internalDate: "1700000000000",
+            payload: {
+              headers: [
+                { name: "From", value: "newsletter@substack.com" },
+                { name: "Subject", value: "Hello" },
+              ],
+              parts: [
+                {
+                  body: { data: encodeBase64Url(html) },
+                  mimeType: "text/html",
+                },
+              ],
+            },
+          }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(fetchFromGmail, {});
+  } finally {
+    restoreFetchInitial();
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = previousApiKey;
+  }
+
+  const emails = await t.query(listWithPendingLinks, {});
+  const emailId = emails[0]?._id;
+  if (!emailId) {
+    throw new Error("Expected emailId");
+  }
+
+  const restoreFetchRetry = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      const html = `<a href="https://substack.com/app-link/post/abc">Read</a>`;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: "m1",
+            internalDate: "1700000000000",
+            payload: {
+              headers: [
+                { name: "From", value: "newsletter@substack.com" },
+                { name: "Subject", value: "Hello" },
+              ],
+              parts: [
+                {
+                  body: { data: encodeBase64Url(html) },
+                  mimeType: "text/html",
+                },
+              ],
+            },
+          }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    const result = await t.action(retrySyncEmail, { emailId });
+    expect(result.status).toBe("success");
+    expect(result.storedLinkCount).toBe(1);
+  } finally {
+    restoreFetchRetry();
+  }
+
+  const storedEmail = await t.run((ctx) => ctx.db.get(emailId));
+  expect(storedEmail?.extractionError).toBe(false);
+
+  const links = await t.run((ctx) =>
+    ctx.db
+      .query("links")
+      .withIndex("by_emailId", (q) => q.eq("emailId", emailId))
+      .collect()
+  );
+  expect(links).toHaveLength(1);
+
+  const logs = await t.run((ctx) =>
+    ctx.db
+      .query("syncLogs")
+      .withIndex("by_emailId_attemptedAt", (q) => q.eq("emailId", emailId))
+      .collect()
+  );
+  expect(logs).toHaveLength(2);
 });
 
 test("listWithPendingLinks includes emails with actioned links but not marked as read", async () => {
