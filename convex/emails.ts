@@ -16,6 +16,7 @@ import { parseEmailFetchLimit } from "../lib/settings";
 
 import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "../lib/settings-keys";
 import {
+  type ActionCtx,
   action,
   internalMutation,
   internalQuery,
@@ -189,6 +190,44 @@ function _errorSummary(error: unknown): Record<string, unknown> {
   };
 }
 
+function createGoogleTokenFlow(ctx: ActionCtx) {
+  const loadTokens = async (): Promise<StoredTokens> => {
+    const tokens = await ctx.runQuery(getTokens, {});
+    if (!tokens) {
+      throw new Error("Gmail not connected");
+    }
+    return {
+      accessToken: tokens.accessToken,
+      expiresAt: tokens.expiresAt,
+      refreshToken: tokens.refreshToken,
+    };
+  };
+
+  const persistTokens = async (tokens: StoredTokens) => {
+    await ctx.runMutation(saveTokens, {
+      accessToken: tokens.accessToken,
+      expiresAt: tokens.expiresAt,
+      refreshToken: tokens.refreshToken,
+    });
+  };
+
+  const refreshTokens = async (refreshToken: string): Promise<StoredTokens> => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!(clientId && clientSecret)) {
+      throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+    }
+
+    return await refreshGoogleAccessToken({
+      env: { clientId, clientSecret },
+      refreshToken,
+    });
+  };
+
+  return { loadTokens, persistTokens, refreshTokens };
+}
+
 export const fetchFromGmail = action({
   args: {},
   handler: async (ctx) => {
@@ -203,41 +242,8 @@ export const fetchFromGmail = action({
       await ctx.runQuery(getSetting, { key: EMAIL_FETCH_LIMIT_SETTING_KEY })
     );
 
-    const loadTokens = async (): Promise<StoredTokens> => {
-      const tokens = await ctx.runQuery(getTokens, {});
-      if (!tokens) {
-        throw new Error("Gmail not connected");
-      }
-      return {
-        accessToken: tokens.accessToken,
-        expiresAt: tokens.expiresAt,
-        refreshToken: tokens.refreshToken,
-      };
-    };
-
-    const persistTokens = async (tokens: StoredTokens) => {
-      await ctx.runMutation(saveTokens, {
-        accessToken: tokens.accessToken,
-        expiresAt: tokens.expiresAt,
-        refreshToken: tokens.refreshToken,
-      });
-    };
-
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
-    const refreshTokens = async (
-      refreshToken: string
-    ): Promise<StoredTokens> => {
-      if (!(clientId && clientSecret)) {
-        throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
-      }
-
-      return await refreshGoogleAccessToken({
-        env: { clientId, clientSecret },
-        refreshToken,
-      });
-    };
+    const { loadTokens, persistTokens, refreshTokens } =
+      createGoogleTokenFlow(ctx);
 
     interface FetchResult {
       extractionError: unknown | null;
@@ -514,41 +520,8 @@ export const markAsRead = action({
       return { discarded: 0 };
     }
 
-    const loadTokens = async (): Promise<StoredTokens> => {
-      const tokens = await ctx.runQuery(getTokens, {});
-      if (!tokens) {
-        throw new Error("Gmail not connected");
-      }
-      return {
-        accessToken: tokens.accessToken,
-        expiresAt: tokens.expiresAt,
-        refreshToken: tokens.refreshToken,
-      };
-    };
-
-    const persistTokens = async (tokens: StoredTokens) => {
-      await ctx.runMutation(saveTokens, {
-        accessToken: tokens.accessToken,
-        expiresAt: tokens.expiresAt,
-        refreshToken: tokens.refreshToken,
-      });
-    };
-
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
-    const refreshTokens = async (
-      refreshToken: string
-    ): Promise<StoredTokens> => {
-      if (!(clientId && clientSecret)) {
-        throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
-      }
-
-      return await refreshGoogleAccessToken({
-        env: { clientId, clientSecret },
-        refreshToken,
-      });
-    };
+    const { loadTokens, persistTokens, refreshTokens } =
+      createGoogleTokenFlow(ctx);
 
     const program = withFreshToken(
       loadTokens,
