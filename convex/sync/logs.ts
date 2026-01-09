@@ -1,6 +1,7 @@
 import type { GenericId } from "convex/values";
 import { v } from "convex/values";
 
+import type { QueryCtx } from "../_generated/server";
 import { internalMutation, query } from "../_generated/server";
 
 export type SyncLogStatus = "success" | "error";
@@ -13,9 +14,29 @@ export interface SyncLogRow {
   from: string;
   gmailId: string;
   receivedAt: number;
+  savedLinkCount: number;
   status: SyncLogStatus;
   storedLinkCount: number;
   subject: string;
+}
+
+async function countSavedLinksForEmail(
+  ctx: QueryCtx,
+  emailId: GenericId<"emails">
+) {
+  const links = await ctx.db
+    .query("links")
+    .withIndex("by_emailId", (q) => q.eq("emailId", emailId))
+    .collect();
+
+  let savedLinkCount = 0;
+  for (const link of links) {
+    if (link.status === "saved") {
+      savedLinkCount += 1;
+    }
+  }
+
+  return savedLinkCount;
 }
 
 export const insert = internalMutation({
@@ -81,6 +102,7 @@ export const list = query({
         continue;
       }
 
+      const savedLinkCount = await countSavedLinksForEmail(ctx, row.emailId);
       results.push({
         _id: row._id,
         attemptedAt: row.attemptedAt,
@@ -89,6 +111,7 @@ export const list = query({
         from: row.from,
         gmailId: row.gmailId,
         receivedAt: row.receivedAt,
+        savedLinkCount,
         status: row.status,
         storedLinkCount: row.storedLinkCount,
         subject: row.subject,

@@ -12,6 +12,7 @@ interface SyncLogRow {
   _id: GenericId<"syncLogs">;
   attemptedAt: number;
   emailId: GenericId<"emails">;
+  savedLinkCount: number;
   status: "success" | "error";
   subject: string;
 }
@@ -153,4 +154,72 @@ test("sync/logs:list filters by latest status", async () => {
 
   const result = await t.query(listSyncLogs, { status: "error" });
   expect(result).toHaveLength(0);
+});
+
+test("sync/logs:list returns savedLinkCount based on current links", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", { createdAt: 0, email: "newsletter@example.com" })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: 1,
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "d1",
+      emailId,
+      status: "saved",
+      title: "t1",
+      url: "https://example.com/1",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "d2",
+      emailId,
+      status: "pending",
+      title: "t2",
+      url: "https://example.com/2",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "d3",
+      emailId,
+      status: "saved",
+      title: "t3",
+      url: "https://example.com/3",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("syncLogs", {
+      attemptedAt: 1,
+      emailId,
+      extractedLinkCount: 3,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      receivedAt: 1,
+      status: "success",
+      storedLinkCount: 3,
+      subject: "Hello",
+    })
+  );
+
+  const result = await t.query(listSyncLogs, {});
+  expect(result).toHaveLength(1);
+  expect(result[0]?.savedLinkCount).toBe(2);
 });

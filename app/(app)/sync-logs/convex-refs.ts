@@ -12,6 +12,7 @@ export interface SyncLogRow {
   from: string;
   gmailId: string;
   receivedAt: number;
+  savedLinkCount: number;
   status: SyncLogStatus;
   storedLinkCount: number;
   subject: string;

@@ -13,9 +13,10 @@ import { getEmailNavigation } from "./use-email-navigation";
 export const dynamic = "force-dynamic";
 
 export default async function EmailPage(props: {
-  params: { emailId: string };
+  params: { emailId: string } | Promise<{ emailId: string }>;
 }) {
-  const emailId = getEmailIdParam(props.params.emailId);
+  const params = await props.params;
+  const emailId = getEmailIdParam(params.emailId);
   if (!emailId) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">

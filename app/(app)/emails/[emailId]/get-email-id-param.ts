@@ -5,5 +5,9 @@ export function getEmailIdParam(param: unknown): GenericId<"emails"> | null {
     return param as GenericId<"emails">;
   }
 
+  if (Array.isArray(param) && typeof param[0] === "string" && param[0].length) {
+    return param[0] as GenericId<"emails">;
+  }
+
   return null;
 }

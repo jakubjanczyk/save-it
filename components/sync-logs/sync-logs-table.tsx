@@ -22,6 +22,7 @@ export interface SyncLogRow {
   from: string;
   gmailId: string;
   receivedAt: number;
+  savedLinkCount: number;
   status: SyncLogStatus;
   storedLinkCount: number;
   subject: string;
@@ -56,6 +57,7 @@ export function SyncLogsTable(props: {
           <TableHead>Email</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Links</TableHead>
+          <TableHead className="text-right">Saved</TableHead>
           <TableHead>Last sync</TableHead>
           <TableHead />
         </TableRow>
@@ -81,6 +83,9 @@ export function SyncLogsTable(props: {
               <TableCell>{statusLabel}</TableCell>
               <TableCell className="text-right tabular-nums">
                 {linksLabel}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                {log.savedLinkCount}
               </TableCell>
               <TableCell className="whitespace-nowrap">
                 {formatUtcDateTime(log.attemptedAt)}

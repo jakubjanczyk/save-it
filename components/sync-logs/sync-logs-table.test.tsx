@@ -25,6 +25,7 @@ test("shows Retry for failed logs", async () => {
           from: "a@b.com",
           gmailId: "m1",
           receivedAt: 1,
+          savedLinkCount: 0,
           status: "error",
           storedLinkCount: 0,
           subject: "Hello",
@@ -52,6 +53,7 @@ test("does not show Retry for successful logs", () => {
           from: "a@b.com",
           gmailId: "m1",
           receivedAt: 1,
+          savedLinkCount: 0,
           status: "success",
           storedLinkCount: 1,
           subject: "Hello",
@@ -63,4 +65,31 @@ test("does not show Retry for successful logs", () => {
   );
 
   expect(rendered.queryByRole("button", { name: "Retry" })).toBeNull();
+});
+
+test("shows saved link count", () => {
+  render(
+    <SyncLogsTable
+      logs={[
+        {
+          _id: "l1" as GenericId<"syncLogs">,
+          attemptedAt: 0,
+          emailId: "e1" as GenericId<"emails">,
+          extractedLinkCount: 0,
+          from: "a@b.com",
+          gmailId: "m1",
+          receivedAt: 1,
+          savedLinkCount: 7,
+          status: "success",
+          storedLinkCount: 0,
+          subject: "Hello",
+        },
+      ]}
+      onRetry={() => undefined}
+      retryingEmailId={null}
+    />
+  );
+
+  expect(screen.getByRole("columnheader", { name: "Saved" })).toBeDefined();
+  expect(screen.getByRole("cell", { name: "7" })).toBeDefined();
 });
