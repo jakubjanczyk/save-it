@@ -39,18 +39,20 @@ export function EmailList({
             <Link
               aria-current={selected ? "true" : undefined}
               className={cn(
-                "flex w-full items-center justify-between gap-4 px-4 py-3 text-left",
+                "flex w-full flex-col items-start gap-3 px-4 py-3 text-left sm:flex-row sm:items-center sm:justify-between",
                 selected ? "bg-accent" : "hover:bg-muted/50"
               )}
               href={`${emailHrefPrefix}/${email.id}`}
             >
               <div className="min-w-0">
-                <div className="truncate font-medium">{email.subject}</div>
-                <div className="truncate text-muted-foreground text-sm">
+                <div className="break-words font-medium leading-snug">
+                  {email.subject}
+                </div>
+                <div className="break-words text-muted-foreground text-sm">
                   {email.from}
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                 {email.extractionError ? (
                   <span className="rounded bg-destructive/10 px-2 py-1 font-medium text-destructive text-xs">
                     Extraction error

@@ -19,7 +19,7 @@ export default async function EmailPage(props: {
   const emailId = getEmailIdParam(params.emailId);
   if (!emailId) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <InvalidEmailCard />
       </div>
     );
@@ -34,7 +34,7 @@ export default async function EmailPage(props: {
 
   if (!email) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <EmailNotInQueueCard />
       </div>
     );
@@ -47,7 +47,7 @@ export default async function EmailPage(props: {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
       <EmailDetailClient
         email={email}
         links={links}

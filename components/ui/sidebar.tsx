@@ -37,6 +37,7 @@ const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+const MOBILE_BREAKPOINT = 768;
 
 interface SidebarContextProps {
   state: "expanded" | "collapsed";
@@ -99,7 +100,14 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
+    const shouldUseMobile =
+      typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches
+        : isMobile;
+
+    return shouldUseMobile
+      ? setOpenMobile((open) => !open)
+      : setOpen((open) => !open);
   }, [isMobile, setOpen]);
 
   useEffect(() => {
