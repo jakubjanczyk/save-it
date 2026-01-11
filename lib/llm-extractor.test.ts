@@ -63,6 +63,29 @@ test("llmExtractLinks strips newsletter HTML before sending to the model", async
   expect(call.prompt.includes("[Read](https://example.com/a)")).toBe(true);
 });
 
+test("llmExtractLinks prompt instructs the model to exclude sponsored links", async () => {
+  generateTextMock.mockResolvedValue({ output: { links: [] } });
+
+  await Effect.runPromise(
+    llmExtractLinks("<p>Hello</p>", {
+      model: {} as LlmModel,
+      timeoutMs: 10,
+    })
+  );
+
+  const call = generateTextMock.mock.calls[0]?.[0] as
+    | { prompt?: unknown }
+    | undefined;
+
+  expect(typeof call?.prompt).toBe("string");
+  if (typeof call?.prompt !== "string") {
+    throw new Error("Expected prompt");
+  }
+
+  expect(call.prompt.toLowerCase()).toContain("sponsored");
+  expect(call.prompt.toLowerCase()).toContain("promotional");
+});
+
 test("llmExtractLinks maps generic failures to ExtractionLLMError", async () => {
   generateTextMock.mockRejectedValue(new Error("boom"));
 

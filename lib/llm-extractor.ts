@@ -25,6 +25,7 @@ const extractedLinksSchema = z.object({
 const extractionPrompt = `Extract content links from this newsletter email. Return only links to articles, blog posts, videos, tools, or other content the reader is meant to consume.
 
 Ignore and exclude:
+- Sponsored / paid / promotional links (including ads, partner messages, affiliate offers, discounts, coupons, free trials, "buy now", "get started", etc.)
 - Unsubscribe / manage preferences links
 - Social media profile links (twitter.com/user, linkedin.com/in/user, etc.)
 - "View in browser" or "View online" links
