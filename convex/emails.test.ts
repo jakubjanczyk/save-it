@@ -75,6 +75,24 @@ const setSetting: FunctionReference<
   null
 > = makeFunctionReference("settings:set");
 
+const storeLinks: FunctionReference<
+  "mutation",
+  "internal",
+  {
+    emailId: GenericId<"emails">;
+    links: { description: string; title: string; url: string }[];
+  },
+  { inserted: number }
+> = makeFunctionReference("emails:storeLinks") as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    emailId: GenericId<"emails">;
+    links: { description: string; title: string; url: string }[];
+  },
+  { inserted: number }
+>;
+
 function encodeBase64Url(value: string) {
   const base64 = Buffer.from(value, "utf-8").toString("base64");
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -1056,4 +1074,142 @@ test("markAsRead does not discard links if Gmail call fails", async () => {
 
   const pending = await t.run((ctx) => ctx.db.get(pendingId));
   expect(pending?.status).toBe("pending");
+});
+
+test("storeLinks skips inserting a duplicate url across emails", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const email1Id = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const email2Id = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m2",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello again",
+    })
+  );
+
+  const existingUrl = "https://example.com/duplicate";
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Existing",
+      emailId: email1Id,
+      status: "saved",
+      title: "Existing title",
+      url: existingUrl,
+    })
+  );
+
+  const result = await t.mutation(storeLinks, {
+    emailId: email2Id,
+    links: [
+      {
+        description: "New",
+        title: "New title",
+        url: existingUrl,
+      },
+    ],
+  });
+
+  expect(result.inserted).toBe(0);
+
+  const email2Links = await t.run((ctx) =>
+    ctx.db
+      .query("links")
+      .withIndex("by_emailId", (q) => q.eq("emailId", email2Id))
+      .collect()
+  );
+
+  expect(email2Links).toHaveLength(0);
+});
+
+test("storeLinks skips inserting a duplicate title across emails", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const email1Id = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const email2Id = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m2",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello again",
+    })
+  );
+
+  const existingTitle = "Duplicate title";
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Existing",
+      emailId: email1Id,
+      status: "discarded",
+      title: existingTitle,
+      url: "https://example.com/original",
+    })
+  );
+
+  const result = await t.mutation(storeLinks, {
+    emailId: email2Id,
+    links: [
+      {
+        description: "New",
+        title: existingTitle,
+        url: "https://example.com/new-url",
+      },
+    ],
+  });
+
+  expect(result.inserted).toBe(0);
+
+  const email2Links = await t.run((ctx) =>
+    ctx.db
+      .query("links")
+      .withIndex("by_emailId", (q) => q.eq("emailId", email2Id))
+      .collect()
+  );
+
+  expect(email2Links).toHaveLength(0);
 });

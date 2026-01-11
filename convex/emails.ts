@@ -378,14 +378,18 @@ export const storeLinks = internalMutation({
     let inserted = 0;
 
     for (const link of args.links) {
-      const existing = await ctx.db
-        .query("links")
-        .withIndex("by_emailId_url", (q) =>
-          q.eq("emailId", args.emailId).eq("url", link.url)
-        )
-        .unique();
+      const [existingByUrl, existingByTitle] = await Promise.all([
+        ctx.db
+          .query("links")
+          .withIndex("by_url", (q) => q.eq("url", link.url))
+          .first(),
+        ctx.db
+          .query("links")
+          .withIndex("by_title", (q) => q.eq("title", link.title))
+          .first(),
+      ]);
 
-      if (existing) {
+      if (existingByUrl || existingByTitle) {
         continue;
       }
 

@@ -43,6 +43,8 @@ export default defineSchema({
   })
     .index("by_emailId", ["emailId"])
     .index("by_emailId_url", ["emailId", "url"])
+    .index("by_title", ["title"])
+    .index("by_url", ["url"])
     .index("by_status", ["status"]),
 
   oauthTokens: defineTable({
