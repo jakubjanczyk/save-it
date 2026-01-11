@@ -14,6 +14,11 @@
     "indentStyle": "space",
     "indentWidth": 2
   },
+  "json": {
+    "parser": {
+      "allowComments": true
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -34,5 +39,20 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["convex/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["camelCase", "kebab-case"] }
+            }
+          }
+        }
+      }
+    }
+  ],
   "extends": ["ultracite/biome/core", "ultracite/biome/next"]
 }
