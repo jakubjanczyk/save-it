@@ -76,6 +76,31 @@ export const listPendingFocus: FunctionReference<
   }>
 > = makeFunctionReference("links:listPendingFocus");
 
+export const countPendingFocus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  number
+> = makeFunctionReference("links:countPendingFocus");
+
+export const listPendingFocusBatch: FunctionReference<
+  "query",
+  "public",
+  { excludeIds?: GenericId<"links">[]; limit: number },
+  Array<{
+    description: string;
+    email: {
+      from: string;
+      id: GenericId<"emails">;
+      receivedAt: number;
+      subject: string;
+    };
+    id: GenericId<"links">;
+    title: string;
+    url: string;
+  }>
+> = makeFunctionReference("links:listPendingFocusBatch");
+
 export const saveLink: FunctionReference<
   "action",
   "public",

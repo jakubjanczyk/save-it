@@ -18,7 +18,7 @@ test.describe("with Convex configured", () => {
   });
 
   test("opens shortcuts help in focus view with ?", async ({ page }) => {
-    await page.goto("/focus");
+    await page.goto("/match");
 
     if (await page.getByText("No pending links").isVisible()) {
       test.skip(true, "Seed at least one pending link first.");

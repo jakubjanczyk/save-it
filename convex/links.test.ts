@@ -31,6 +31,20 @@ const listPendingFocus: FunctionReference<
   Array<{ id: GenericId<"links">; email: { id: GenericId<"emails"> } }>
 > = makeFunctionReference("links:listPendingFocus");
 
+const listPendingFocusBatch: FunctionReference<
+  "query",
+  "public",
+  { excludeIds?: GenericId<"links">[]; limit: number },
+  Array<{ id: GenericId<"links">; email: { id: GenericId<"emails"> } }>
+> = makeFunctionReference("links:listPendingFocusBatch");
+
+const countPendingFocus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  number
+> = makeFunctionReference("links:countPendingFocus");
+
 const discard: FunctionReference<
   "action",
   "public",
@@ -394,6 +408,209 @@ test("listPendingFocus excludes emails that are already marked as read", async (
 
   expect(result).toHaveLength(1);
   expect(result[0]?.email.id).toBe(activeEmailId);
+});
+
+test("listPendingFocusBatch respects limit", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
+    })
+  );
+
+  const result = await t.query(listPendingFocusBatch, { limit: 1 });
+
+  expect(result).toHaveLength(1);
+});
+
+test("listPendingFocusBatch excludes links from excludeIds", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkA = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
+    })
+  );
+
+  const result = await t.query(listPendingFocusBatch, {
+    excludeIds: [linkA],
+    limit: 10,
+  });
+
+  expect(result.some((item) => item.id === linkA)).toBe(false);
+});
+
+test("countPendingFocus excludes links from read emails", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const unreadEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Unread",
+    })
+  );
+
+  const readEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "b@example.com",
+      gmailId: "g2",
+      markedAsRead: true,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Read",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId: unreadEmailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/unread",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId: readEmailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/read",
+    })
+  );
+
+  const count = await t.query(countPendingFocus, {});
+
+  expect(count).toBe(1);
+});
+
+test("countPendingFocus excludes links that are not pending", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/pending",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/saved",
+    })
+  );
+
+  const count = await t.query(countPendingFocus, {});
+
+  expect(count).toBe(1);
 });
 
 test("save marks email as read when it saves the last pending link", async () => {

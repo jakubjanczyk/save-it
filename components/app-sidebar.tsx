@@ -24,13 +24,13 @@ import {
 
 const items = [
   {
-    title: "Home",
+    title: "Inbox",
     href: "/",
     icon: HomeIcon,
   },
   {
-    title: "Focus",
-    href: "/focus",
+    title: "Match",
+    href: "/match",
     icon: TargetIcon,
   },
   {

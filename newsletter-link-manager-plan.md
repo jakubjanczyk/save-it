@@ -1401,10 +1401,10 @@ Tests should run on every PR:
 
 ### Phase 6: Triage UI - Focus View
 
-**Implementation note:** Focus View is a separate `/focus` page that triages across *all* pending links (not per-email).
+**Implementation note:** Focus View is a separate `/match` page that triages across *all* pending links (not per-email).
 
 **Progress (done in this repo):**
-- [x] Focus triage page `/focus` with `?linkId=` state (`app/(app)/focus/page.tsx`, `app/(app)/focus/page-client.tsx`)
+- [x] Focus triage page `/match` with `?linkId=` state (`app/(app)/match/page.tsx`, `app/(app)/match/page-client.tsx`)
 - [x] `FocusView` component + tests (`components/focus-view.tsx`, `components/focus-view.test.tsx`)
 - [x] Convex query to fetch pending focus items (`convex/links.ts`, `convex/links.test.ts`)
 - [x] Auto-mark emails as read once their last pending link is processed (`convex/links.ts`, `convex/links.test.ts`)
@@ -1434,8 +1434,8 @@ Tests should run on every PR:
 **Progress (done in this repo):**
 - [x] `useKeyboardShortcuts` hook + tests (`hooks/use-keyboard-shortcuts.ts`, `hooks/use-keyboard-shortcuts.test.tsx`)
 - [x] `KeyboardShortcuts` help overlay + tests (`components/keyboard-shortcuts.tsx`, `components/keyboard-shortcuts.test.tsx`)
-- [x] Integrated shortcuts into Focus and Email Detail views (`app/(app)/focus/page-client.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
-- [x] Added "Press ? for shortcuts" UI hints (`app/(app)/focus/page.tsx`, `components/email-detail-view.tsx`)
+- [x] Integrated shortcuts into Focus and Email Detail views (`app/(app)/match/page-client.tsx`, `app/(app)/emails/[emailId]/page-client.tsx`)
+- [x] Added "Press ? for shortcuts" UI hints (`app/(app)/match/page.tsx`, `components/email-detail-view.tsx`)
 - [x] E2E keyboard shortcuts spec drafted (`e2e/keyboard.spec.ts`)
 
 81. Write tests for `useKeyboardShortcuts` hook (`hooks/use-keyboard-shortcuts.test.tsx`)

@@ -10,6 +10,7 @@ import {
   action,
   internalMutation,
   internalQuery,
+  type QueryCtx,
   query,
 } from "./_generated/server";
 
@@ -219,7 +220,67 @@ export const save = action({
   },
 });
 
+async function listPendingFocusBatchImpl(
+  ctx: QueryCtx,
+  args: { excludeIds?: GenericId<"links">[]; limit: number }
+) {
+  const exclude = new Set(args.excludeIds ?? []);
+  const scanLimit = Math.max(args.limit, 2000);
+
+  const links = await ctx.db
+    .query("links")
+    .withIndex("by_status", (q) => q.eq("status", "pending"))
+    .take(scanLimit);
+
+  const items: Array<{
+    description: string;
+    email: {
+      from: string;
+      id: GenericId<"emails">;
+      receivedAt: number;
+      subject: string;
+    };
+    id: GenericId<"links">;
+    title: string;
+    url: string;
+  }> = [];
+
+  for (const link of links) {
+    if (exclude.has(link._id)) {
+      continue;
+    }
+
+    const email = await ctx.db.get(link.emailId);
+    if (!email || email.markedAsRead) {
+      continue;
+    }
+
+    items.push({
+      description: link.description,
+      email: {
+        from: email.from,
+        id: email._id,
+        receivedAt: email.receivedAt,
+        subject: email.subject,
+      },
+      id: link._id,
+      title: link.title,
+      url: link.url,
+    });
+  }
+
+  items.sort((a, b) => b.email.receivedAt - a.email.receivedAt);
+  return items.slice(0, Math.max(0, args.limit));
+}
+
 export const listPendingFocus = query({
+  args: {},
+  handler: async (ctx) => {
+    return await listPendingFocusBatchImpl(ctx, { limit: 2000 });
+  },
+});
+
+export const countPendingFocus = query({
   args: {},
   handler: async (ctx) => {
     const links = await ctx.db
@@ -227,40 +288,44 @@ export const listPendingFocus = query({
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
 
-    const items: Array<{
-      description: string;
-      email: {
-        from: string;
-        id: GenericId<"emails">;
-        receivedAt: number;
-        subject: string;
-      };
-      id: GenericId<"links">;
-      title: string;
-      url: string;
-    }> = [];
+    const emailCache = new Map<
+      GenericId<"emails">,
+      { markedAsRead: boolean }
+    >();
 
+    let count = 0;
     for (const link of links) {
-      const email = await ctx.db.get(link.emailId);
-      if (!email || email.markedAsRead) {
+      let email = emailCache.get(link.emailId);
+      if (!email) {
+        const stored = await ctx.db.get(link.emailId);
+        if (!stored) {
+          continue;
+        }
+
+        email = { markedAsRead: Boolean(stored.markedAsRead) };
+        emailCache.set(link.emailId, email);
+      }
+
+      if (email.markedAsRead) {
         continue;
       }
 
-      items.push({
-        description: link.description,
-        email: {
-          from: email.from,
-          id: email._id,
-          receivedAt: email.receivedAt,
-          subject: email.subject,
-        },
-        id: link._id,
-        title: link.title,
-        url: link.url,
-      });
+      count += 1;
     }
 
-    items.sort((a, b) => b.email.receivedAt - a.email.receivedAt);
-    return items;
+    return count;
+  },
+});
+
+export const listPendingFocusBatch = query({
+  args: {
+    excludeIds: v.optional(v.array(v.id("links"))),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await listPendingFocusBatchImpl(ctx, {
+      excludeIds: args.excludeIds ?? [],
+      limit: args.limit,
+    });
   },
 });

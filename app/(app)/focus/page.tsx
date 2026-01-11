@@ -1,32 +1,19 @@
-import { fetchQuery } from "convex/nextjs";
-
-import { requireEnv } from "@/lib/require-env";
-
-import { listPendingFocus } from "../home-convex-refs";
-
-import { FocusClient } from "./page-client";
-import type { FocusSearchParams } from "./search-params";
-import { resolveRequestedLinkId } from "./search-params";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function FocusPage(props: {
-  searchParams?: FocusSearchParams | Promise<FocusSearchParams>;
+export default async function FocusRedirect(props: {
+  searchParams?:
+    | { linkId?: string | string[] }
+    | Promise<{ linkId?: string | string[] }>;
 }) {
-  const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
-  const items = await fetchQuery(listPendingFocus, {}, { url: convexUrl });
-  const requestedLinkId = await resolveRequestedLinkId(props.searchParams);
+  const searchParams = await props.searchParams;
+  const linkId =
+    typeof searchParams?.linkId === "string" ? searchParams.linkId : null;
 
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-      <div>
-        <h1 className="font-semibold text-2xl tracking-tight">Focus</h1>
-        <p className="text-muted-foreground text-sm">
-          Save or discard links one by one. Press ? for shortcuts.
-        </p>
-      </div>
+  if (linkId) {
+    redirect(`/match?linkId=${encodeURIComponent(linkId)}`);
+  }
 
-      <FocusClient items={items} requestedLinkId={requestedLinkId} />
-    </div>
-  );
+  redirect("/match");
 }

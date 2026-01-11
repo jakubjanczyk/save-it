@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 const hasConvexUrl = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
-const focusUrlRegex = /\/focus\?linkId=/;
+const focusUrlRegex = /\/match\?linkId=/;
 
 async function login(page: Page) {
   await page.goto("/login");
@@ -19,7 +19,7 @@ test.describe("with Convex configured", () => {
   });
 
   test("triages a link in focus view", async ({ page }) => {
-    await page.goto("/focus");
+    await page.goto("/match");
 
     if (await page.getByText("No pending links").isVisible()) {
       test.skip(true, "Seed at least one email with pending links first.");

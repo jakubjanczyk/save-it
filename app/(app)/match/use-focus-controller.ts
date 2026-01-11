@@ -72,7 +72,7 @@ export function useFocusController(params: {
     }
 
     if (!params.requestedLinkId || activeIndex === -1) {
-      router.replace(`/focus?linkId=${params.items[0]?.id}`);
+      router.replace(`/match?linkId=${params.items[0]?.id}`);
     }
   }, [
     activeIndex,
@@ -117,12 +117,12 @@ export function useFocusController(params: {
 
   const advance = (nextId: GenericId<"links"> | null) => {
     if (nextId) {
-      router.replace(`/focus?linkId=${nextId}`);
+      router.replace(`/match?linkId=${nextId}`);
       router.refresh();
       return;
     }
 
-    router.replace("/focus");
+    router.replace("/match");
     router.refresh();
   };
 
