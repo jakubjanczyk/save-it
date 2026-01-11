@@ -24,14 +24,14 @@ import {
 
 const items = [
   {
-    title: "Inbox",
+    title: "Match",
     href: "/",
-    icon: HomeIcon,
+    icon: TargetIcon,
   },
   {
-    title: "Match",
-    href: "/match",
-    icon: TargetIcon,
+    title: "Inbox",
+    href: "/inbox",
+    icon: HomeIcon,
   },
   {
     title: "Senders",
@@ -50,6 +50,18 @@ const items = [
   },
 ] as const;
 
+function isNavItemActive(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/" || pathname.startsWith("/match");
+  }
+
+  if (href === "/inbox") {
+    return pathname === "/inbox" || pathname.startsWith("/emails");
+  }
+
+  return pathname === href;
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -62,7 +74,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isNavItemActive(pathname, item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive}>

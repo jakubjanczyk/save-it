@@ -75,7 +75,7 @@ export function EmailDetailClient(props: {
       />
 
       <EmailDetailView
-        backHref="/"
+        backHref="/inbox"
         email={{
           extractionError: props.email.extractionError,
           from: props.email.from,

@@ -11,7 +11,7 @@ afterEach(() => {
 test("renders email subject", () => {
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",
@@ -41,7 +41,7 @@ test("renders email subject", () => {
 test("renders email sender", () => {
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",
@@ -71,7 +71,7 @@ test("renders email sender", () => {
 test("renders back link", () => {
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",
@@ -97,14 +97,14 @@ test("renders back link", () => {
 
   expect(rendered.getByRole("link", { name: "Back to inbox" })).toHaveAttribute(
     "href",
-    "/"
+    "/inbox"
   );
 });
 
 test("renders first link title", () => {
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",
@@ -141,7 +141,7 @@ test("renders first link title", () => {
 test("renders second link title", () => {
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",
@@ -180,7 +180,7 @@ test("calls onMarkAsRead when Mark as read is clicked", async () => {
   const user = userEvent.setup();
   const rendered = render(
     <EmailDetailView
-      backHref="/"
+      backHref="/inbox"
       email={{
         extractionError: false,
         from: "newsletter@example.com",

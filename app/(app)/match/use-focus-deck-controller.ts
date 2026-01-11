@@ -25,7 +25,10 @@ function setFocusUrl(linkId: GenericId<"links"> | null) {
     return;
   }
 
-  const url = linkId ? `/match?linkId=${linkId}` : "/match";
+  const basePath = window.location.pathname.startsWith("/match")
+    ? "/match"
+    : "/";
+  const url = linkId ? `${basePath}?linkId=${linkId}` : basePath;
   window.history.replaceState(null, "", url);
 }
 

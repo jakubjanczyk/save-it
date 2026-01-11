@@ -43,7 +43,7 @@ export function EmailDetailShortcuts(props: {
       onPrevLink={props.onPrevLink}
       onSave={props.onSave}
       onToggleView={() => {
-        router.push("/match");
+        router.push("/");
       }}
     />
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import type { GenericId } from "convex/values";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -45,6 +45,8 @@ export function useFocusController(params: {
   save: (args: { linkId: GenericId<"links"> }) => Promise<unknown>;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const matchPath = pathname.startsWith("/match") ? "/match" : "/";
   const [busy, setBusy] = useState(false);
   const [feedbackAction, setFeedbackAction] =
     useState<FocusFeedbackAction>(null);
@@ -72,11 +74,12 @@ export function useFocusController(params: {
     }
 
     if (!params.requestedLinkId || activeIndex === -1) {
-      router.replace(`/match?linkId=${params.items[0]?.id}`);
+      router.replace(`${matchPath}?linkId=${params.items[0]?.id}`);
     }
   }, [
     activeIndex,
     feedbackAction,
+    matchPath,
     params.items,
     params.requestedLinkId,
     router,
@@ -117,12 +120,12 @@ export function useFocusController(params: {
 
   const advance = (nextId: GenericId<"links"> | null) => {
     if (nextId) {
-      router.replace(`/match?linkId=${nextId}`);
+      router.replace(`${matchPath}?linkId=${nextId}`);
       router.refresh();
       return;
     }
 
-    router.replace("/match");
+    router.replace(matchPath);
     router.refresh();
   };
 

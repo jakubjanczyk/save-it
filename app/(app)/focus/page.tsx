@@ -12,8 +12,8 @@ export default async function FocusRedirect(props: {
     typeof searchParams?.linkId === "string" ? searchParams.linkId : null;
 
   if (linkId) {
-    redirect(`/match?linkId=${encodeURIComponent(linkId)}`);
+    redirect(`/?linkId=${encodeURIComponent(linkId)}`);
   }
 
-  redirect("/match");
+  redirect("/");
 }
