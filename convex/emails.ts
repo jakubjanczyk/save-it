@@ -5,8 +5,10 @@ import {
   archive as archiveGmail,
   markAsRead as markGmailAsRead,
 } from "../lib/gmail";
+import { internal } from "./_generated/api";
 import {
   action,
+  internalAction,
   internalMutation,
   internalQuery,
   query,
@@ -22,6 +24,20 @@ export const fetchFromGmail = action({
   args: {},
   handler: (ctx): Promise<{ fetched: number }> =>
     Effect.runPromise(fetchFromGmailProgram(ctx)),
+});
+
+export const fetchFromGmailInternal = internalAction({
+  args: {},
+  handler: (ctx): Promise<{ fetched: number }> =>
+    Effect.runPromise(fetchFromGmailProgram(ctx)),
+});
+
+export const startFetchFromGmail = action({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.scheduler.runAfter(0, internal.emails.fetchFromGmailInternal, {});
+    return null;
+  },
 });
 
 export const storeEmail = internalMutation({

@@ -2,25 +2,23 @@
 
 import { useAction, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { FetchEmailsCard } from "@/components/fetch-emails-card";
 
-import { fetchFromGmail, getActiveSyncRun } from "./home-convex-refs";
+import { getActiveSyncRun, startFetchFromGmail } from "./home-convex-refs";
 
 export function InboxFetchEmailsCard() {
   const router = useRouter();
-  const runFetch = useAction(fetchFromGmail);
+  const runFetch = useAction(startFetchFromGmail);
   const activeSync = useQuery(getActiveSyncRun, {});
   const isRunning = activeSync?.isStale === false;
 
-  return (
-    <FetchEmailsCard
-      disabled={isRunning}
-      onFetch={async () => {
-        const result = await runFetch({});
-        router.refresh();
-        return result;
-      }}
-    />
-  );
+  useEffect(() => {
+    if (isRunning) {
+      router.refresh();
+    }
+  }, [isRunning, router]);
+
+  return <FetchEmailsCard isRunning={isRunning} onFetch={() => runFetch({})} />;
 }

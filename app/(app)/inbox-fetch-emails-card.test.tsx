@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 test("disables fetch button when a sync is running", () => {
-  useActionMock.mockReturnValue(async () => ({ fetched: 0 }));
+  useActionMock.mockReturnValue(async () => null);
   useQueryMock.mockReturnValue({
     isStale: false,
     run: {
@@ -48,7 +48,7 @@ test("disables fetch button when a sync is running", () => {
 });
 
 test("enables fetch button when there is no active sync", () => {
-  useActionMock.mockReturnValue(async () => ({ fetched: 0 }));
+  useActionMock.mockReturnValue(async () => null);
   useQueryMock.mockReturnValue(null);
 
   const rendered = render(<InboxFetchEmailsCard />);

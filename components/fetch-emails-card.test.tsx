@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 test("calls onFetch when Fetch new emails is clicked", async () => {
-  const onFetch = vi.fn(async () => ({ fetched: 1 }));
+  const onFetch = vi.fn(async () => undefined);
   const user = userEvent.setup();
   const rendered = render(<FetchEmailsCard onFetch={onFetch} />);
 
@@ -28,8 +28,8 @@ test("calls onFetch when Fetch new emails is clicked", async () => {
 });
 
 test("disables Fetch new emails button when disabled", () => {
-  const onFetch = vi.fn(async () => ({ fetched: 1 }));
-  const rendered = render(<FetchEmailsCard disabled onFetch={onFetch} />);
+  const onFetch = vi.fn(async () => undefined);
+  const rendered = render(<FetchEmailsCard isRunning onFetch={onFetch} />);
 
   expect(
     rendered.getByRole("button", { name: "Sync in progress…" })
@@ -37,39 +37,14 @@ test("disables Fetch new emails button when disabled", () => {
   expect(onFetch).not.toHaveBeenCalled();
 });
 
-test("uses singular email when fetched=1", async () => {
+test("shows a toast after a successful fetch", async () => {
   const user = userEvent.setup();
-  const rendered = render(
-    <FetchEmailsCard onFetch={async () => ({ fetched: 1 })} />
-  );
+  const rendered = render(<FetchEmailsCard onFetch={async () => undefined} />);
 
   await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
 
   await waitFor(() => {
-    expect(toastSuccessMock).toHaveBeenCalledWith("Fetched 1 new email.");
-  });
-});
-
-test("disables Fetch new emails button while loading", async () => {
-  const onFetch = () => new Promise<{ fetched: number }>(() => undefined);
-  const user = userEvent.setup();
-  const rendered = render(<FetchEmailsCard onFetch={onFetch} />);
-
-  await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
-
-  expect(rendered.getByRole("button", { name: "Fetching…" })).toBeDisabled();
-});
-
-test("shows toast after a successful fetch", async () => {
-  const user = userEvent.setup();
-  const rendered = render(
-    <FetchEmailsCard onFetch={async () => ({ fetched: 2 })} />
-  );
-
-  await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
-
-  await waitFor(() => {
-    expect(toastSuccessMock).toHaveBeenCalledWith("Fetched 2 new emails.");
+    expect(toastSuccessMock).toHaveBeenCalledWith("Sync started.");
   });
 });
 
@@ -87,5 +62,29 @@ test("shows an error message when fetch fails", async () => {
     expect(rendered.getByRole("alert")).toHaveTextContent(
       "Gmail not connected"
     );
+  });
+});
+
+test("does not submit a form by default", () => {
+  const onFetch = vi.fn(async () => undefined);
+  const rendered = render(<FetchEmailsCard onFetch={onFetch} />);
+
+  expect(rendered.getByRole("button")).toHaveAttribute("type", "button");
+});
+
+test("shows an error message when fetch throws synchronously", async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <FetchEmailsCard
+      onFetch={() => {
+        throw new Error("Boom");
+      }}
+    />
+  );
+
+  await user.click(rendered.getByRole("button", { name: "Fetch new emails" }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole("alert")).toHaveTextContent("Boom");
   });
 });

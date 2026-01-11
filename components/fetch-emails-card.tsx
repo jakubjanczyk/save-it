@@ -1,64 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-function formatFetchedMessage(fetched: number) {
-  return `Fetched ${fetched} new ${fetched === 1 ? "email" : "emails"}.`;
-}
-
 export function FetchEmailsCard(props: {
-  disabled?: boolean;
-  disabledLabel?: string;
-  onFetch: () => Promise<{ fetched: number }>;
+  isRunning?: boolean;
+  onFetch: () => Promise<unknown>;
 }) {
-  const [status, setStatus] = useState<
-    { tag: "idle" } | { tag: "loading" } | { tag: "error"; message: string }
-  >({ tag: "idle" });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
 
-  const disabled = status.tag === "loading" || (props.disabled ?? false);
+  useEffect(() => {
+    if (props.isRunning) {
+      setIsStarting(false)
+    }
+  }, [props.isRunning])
+
+  const disabled = isStarting || (props.isRunning ?? false);
   let label = "Fetch new emails";
 
-  if (props.disabled) {
-    label = props.disabledLabel ?? "Sync in progress…";
-  }
-
-  if (status.tag === "loading") {
-    label = "Fetching…";
+  if (props.isRunning || isStarting) {
+    label = "Sync in progress…";
   }
 
   return (
     <Card className="gap-3 py-4">
       <CardContent className="grid gap-2 px-4">
-        {status.tag === "error" ? (
+        {errorMessage ? (
           <div className="text-destructive text-sm" role="alert">
-            {status.message}
+            {errorMessage}
           </div>
         ) : null}
 
         <Button
           disabled={disabled}
-          onClick={async () => {
-            if (props.disabled) {
+          onClick={() => {
+            if (disabled) {
               return;
             }
-            setStatus({ tag: "loading" });
-            try {
-              const result = await props.onFetch();
-              toast.success(formatFetchedMessage(result.fetched));
-              setStatus({ tag: "idle" });
-            } catch (error) {
-              setStatus({
-                message:
-                  error instanceof Error ? error.message : "Fetch failed",
-                tag: "error",
-              });
-            }
+            setErrorMessage(null);
+            setIsStarting(true)
+              props.onFetch()
+                .then(() => {
+                  toast.success("Sync started.");
+                }).catch((error: unknown) => {
+                  setIsStarting(false)
+                  setErrorMessage(
+                    error instanceof Error ? error.message : "Fetch failed"
+                  );
+                })
           }}
           size="sm"
+          type="button"
         >
           {label}
         </Button>

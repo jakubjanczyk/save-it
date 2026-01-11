@@ -23,12 +23,12 @@ export interface LinkDoc {
   url: string;
 }
 
-export const fetchFromGmail: FunctionReference<
+export const startFetchFromGmail: FunctionReference<
   "action",
   "public",
   Record<string, never>,
-  { fetched: number }
-> = makeFunctionReference("emails:fetchFromGmail");
+  null
+> = makeFunctionReference("emails:startFetchFromGmail");
 
 export const getActiveSyncRun: FunctionReference<
   "query",
