@@ -4,9 +4,9 @@ import { Effect, pipe } from "effect";
 
 import {
   archive as archiveGmail,
+  buildGmailSearchQuery,
   fetchEmails,
   fetchMessageFull,
-  type GmailFullMessage,
   markAsRead as markGmailAsRead,
   type StoredTokens,
   withFreshToken,
@@ -14,7 +14,7 @@ import {
 import { refreshGoogleAccessToken } from "../lib/google-oauth";
 import { extractLinks } from "../lib/link-extractor";
 import { summarizeError } from "../lib/logging/error-summary";
-import { findSenderId } from "../lib/senders/sender-matcher";
+import { findSenderId, parseEmailAddress } from "../lib/senders/sender-matcher";
 import { parseEmailFetchLimit } from "../lib/settings";
 
 import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "../lib/settings-keys";
@@ -25,6 +25,48 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
+
+function createHeartbeatLoop(args: {
+  heartbeat: () => Promise<void>;
+  intervalMs: number;
+}) {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let sleepResolve: (() => void) | null = null;
+
+  const sleep = () =>
+    new Promise<void>((resolve) => {
+      sleepResolve = resolve;
+      timer = setTimeout(() => {
+        timer = null;
+        sleepResolve = null;
+        resolve();
+      }, args.intervalMs);
+    });
+
+  const done = (async () => {
+    while (!stopped) {
+      await args.heartbeat();
+      await sleep();
+    }
+  })();
+
+  return {
+    [Symbol.asyncDispose]: async () => {
+      stopped = true;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (sleepResolve) {
+        const resolve = sleepResolve;
+        sleepResolve = null;
+        resolve();
+      }
+      await done.catch(() => undefined);
+    },
+  };
+}
 
 interface SenderDoc {
   _id: GenericId<"senders">;
@@ -148,6 +190,54 @@ const insertSyncLogRef = makeFunctionReference(
   null
 >;
 
+const startSyncRunRef = makeFunctionReference(
+  "syncruns:start"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  Record<string, never>,
+  | { started: true; runId: GenericId<"syncRuns"> }
+  | { started: false; reason: "alreadyRunning"; runId: GenericId<"syncRuns"> }
+>;
+
+const heartbeatSyncRunRef = makeFunctionReference(
+  "syncruns:heartbeat"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    progress: {
+      fetchedEmails: number;
+      insertedEmails: number;
+      processedEmails: number;
+      storedLinks: number;
+    };
+    runId: GenericId<"syncRuns">;
+  },
+  null
+>;
+
+const finishSyncRunRef = makeFunctionReference(
+  "syncruns:finish"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    errorMessage?: string;
+    errorName?: string;
+    errorTag?: string;
+    progress: {
+      fetchedEmails: number;
+      insertedEmails: number;
+      processedEmails: number;
+      storedLinks: number;
+    };
+    runId: GenericId<"syncRuns">;
+    status: "success" | "error";
+  },
+  null
+>;
+
 function createGoogleTokenFlow(ctx: ActionCtx) {
   const loadTokens = async (): Promise<StoredTokens> => {
     const tokens = await ctx.runQuery(getTokens, {});
@@ -207,6 +297,19 @@ export const fetchFromGmail = action({
       return { fetched: 0 };
     }
 
+    const syncStart = await ctx.runMutation(startSyncRunRef, {});
+    if (!syncStart.started) {
+      throw new Error("Sync already in progress");
+    }
+
+    const syncRunId = syncStart.runId;
+    const syncProgress = {
+      fetchedEmails: 0,
+      insertedEmails: 0,
+      processedEmails: 0,
+      storedLinks: 0,
+    };
+
     const emailFetchLimit = parseEmailFetchLimit(
       await ctx.runQuery(getSetting, { key: EMAIL_FETCH_LIMIT_SETTING_KEY })
     );
@@ -214,119 +317,161 @@ export const fetchFromGmail = action({
     const { loadTokens, persistTokens, refreshTokens } =
       createGoogleTokenFlow(ctx);
 
-    interface FetchResult {
-      extractionError: unknown | null;
-      links: Array<{ description: string; title: string; url: string }>;
-      message: GmailFullMessage;
-    }
+    const heartbeatIntervalMs = 30_000;
+    await using _heartbeatLoop = createHeartbeatLoop({
+      heartbeat: async () => {
+        await ctx.runMutation(heartbeatSyncRunRef, {
+          progress: { ...syncProgress },
+          runId: syncRunId,
+        });
+      },
+      intervalMs: heartbeatIntervalMs,
+    });
 
-    const program: Effect.Effect<FetchResult[], unknown> = withFreshToken(
-      loadTokens,
-      persistTokens,
-      (accessToken) =>
-        pipe(
-          fetchEmails(accessToken, senderPatterns, {
-            maxResults: emailFetchLimit,
-          }),
-          Effect.flatMap((messages) =>
-            Effect.forEach(messages.slice(0, emailFetchLimit), (message) =>
-              pipe(
-                fetchMessageFull(accessToken, message.id),
-                Effect.flatMap((fullMessage) => {
-                  return pipe(
-                    extractLinks(
-                      fullMessage.html,
-                      fullMessage.subject,
-                      fullMessage.from
-                    ),
-                    Effect.map(
-                      (links): FetchResult => ({
-                        extractionError: null,
-                        links,
-                        message: fullMessage,
-                      })
-                    ),
-                    Effect.catchAll((error) =>
-                      Effect.sync(() => {
-                        console.error("Link extraction failed", {
-                          gmailId: fullMessage.gmailId,
-                          from: fullMessage.from,
-                          htmlLength: fullMessage.html.length,
-                          subject: fullMessage.subject,
-                          env: {
-                            hasLlmApiKey:
-                              typeof process.env
-                                .GOOGLE_GENERATIVE_AI_API_KEY === "string",
-                            llmModel:
-                              process.env.LLM_MODEL ?? "gemini-2.5-flash",
-                          },
-                          error: summarizeError(error),
-                        });
+    const runWithFreshToken = async <A>(
+      operation: (accessToken: string) => Effect.Effect<A, unknown>
+    ) => {
+      const program = withFreshToken(loadTokens, persistTokens, operation, {
+        refreshTokens,
+      });
 
-                        return {
-                          extractionError: error,
-                          links: [],
-                          message: fullMessage,
-                        } satisfies FetchResult;
-                      })
-                    )
-                  );
-                })
-              )
+      return await Effect.runPromise(program);
+    };
+
+    let resultStatus: "success" | "error" = "success";
+    let resultErrorFields: ReturnType<typeof getErrorFields> | undefined;
+
+    try {
+      const messages = await runWithFreshToken((accessToken) =>
+        fetchEmails(accessToken, senderPatterns, {
+          maxResults: emailFetchLimit,
+        })
+      );
+
+      const selectedMessages = messages.slice(0, emailFetchLimit);
+      syncProgress.fetchedEmails = selectedMessages.length;
+
+      console.info("Fetched Gmail message list", {
+        query: buildGmailSearchQuery(senderPatterns),
+        requested: emailFetchLimit,
+        returned: selectedMessages.length,
+      });
+
+      let inserted = 0;
+
+      for (const message of selectedMessages) {
+        const fullMessage = await runWithFreshToken((accessToken) =>
+          fetchMessageFull(accessToken, message.id)
+        );
+
+        console.info("Fetched Gmail message", {
+          from: parseEmailAddress(fullMessage.from),
+          gmailId: fullMessage.gmailId,
+          subject: fullMessage.subject,
+        });
+
+        interface ExtractionResult {
+          extractionError: unknown | null;
+          links: Array<{ description: string; title: string; url: string }>;
+        }
+
+        const extraction = await Effect.runPromise(
+          pipe(
+            extractLinks(
+              fullMessage.html,
+              fullMessage.subject,
+              fullMessage.from
+            ),
+            Effect.map(
+              (links): ExtractionResult => ({
+                extractionError: null,
+                links,
+              })
+            ),
+            Effect.catchAll((error) =>
+              Effect.sync(() => {
+                console.error("Link extraction failed", {
+                  gmailId: fullMessage.gmailId,
+                  from: fullMessage.from,
+                  htmlLength: fullMessage.html.length,
+                  subject: fullMessage.subject,
+                  env: {
+                    hasLlmApiKey:
+                      typeof process.env.GOOGLE_GENERATIVE_AI_API_KEY ===
+                      "string",
+                    llmModel: process.env.LLM_MODEL ?? "gemini-2.5-flash",
+                  },
+                  error: summarizeError(error),
+                });
+
+                return {
+                  extractionError: error,
+                  links: [],
+                } satisfies ExtractionResult;
+              })
             )
           )
-        ),
-      { refreshTokens }
-    );
+        );
 
-    const results = await Effect.runPromise(program);
+        syncProgress.processedEmails += 1;
 
-    let inserted = 0;
+        const senderId = findSenderId(senders, fullMessage.from);
+        if (!senderId) {
+          continue;
+        }
 
-    for (const item of results) {
-      const attemptedAt = Date.now();
-      const senderId = findSenderId(senders, item.message.from);
-      if (!senderId) {
-        continue;
+        const attemptedAt = Date.now();
+        const storeResult = await ctx.runMutation(storeEmailRef, {
+          extractionError: extraction.extractionError != null,
+          from: fullMessage.from,
+          gmailId: fullMessage.gmailId,
+          receivedAt: fullMessage.receivedAt,
+          senderId,
+          subject: fullMessage.subject,
+        });
+
+        if (!storeResult.inserted) {
+          continue;
+        }
+
+        const storeLinksResult = await ctx.runMutation(storeLinksRef, {
+          emailId: storeResult.emailId,
+          links: extraction.links,
+        });
+
+        await ctx.runMutation(insertSyncLogRef, {
+          attemptedAt,
+          emailId: storeResult.emailId,
+          ...(extraction.extractionError != null
+            ? getErrorFields(extraction.extractionError)
+            : {}),
+          extractedLinkCount: extraction.links.length,
+          from: fullMessage.from,
+          gmailId: fullMessage.gmailId,
+          receivedAt: fullMessage.receivedAt,
+          status: extraction.extractionError == null ? "success" : "error",
+          storedLinkCount: storeLinksResult.inserted,
+          subject: fullMessage.subject,
+        });
+
+        inserted += 1;
+        syncProgress.insertedEmails += 1;
+        syncProgress.storedLinks += storeLinksResult.inserted;
       }
 
-      const storeResult = await ctx.runMutation(storeEmailRef, {
-        extractionError: item.extractionError != null,
-        from: item.message.from,
-        gmailId: item.message.gmailId,
-        receivedAt: item.message.receivedAt,
-        senderId,
-        subject: item.message.subject,
+      return { fetched: inserted };
+    } catch (error) {
+      resultStatus = "error";
+      resultErrorFields = getErrorFields(error);
+      throw error;
+    } finally {
+      await ctx.runMutation(finishSyncRunRef, {
+        ...(resultErrorFields ?? {}),
+        progress: syncProgress,
+        runId: syncRunId,
+        status: resultStatus,
       });
-
-      if (!storeResult.inserted) {
-        continue;
-      }
-
-      const storeLinksResult = await ctx.runMutation(storeLinksRef, {
-        emailId: storeResult.emailId,
-        links: item.links,
-      });
-
-      await ctx.runMutation(insertSyncLogRef, {
-        attemptedAt,
-        emailId: storeResult.emailId,
-        ...(item.extractionError != null
-          ? getErrorFields(item.extractionError)
-          : {}),
-        extractedLinkCount: item.links.length,
-        from: item.message.from,
-        gmailId: item.message.gmailId,
-        receivedAt: item.message.receivedAt,
-        status: item.extractionError == null ? "success" : "error",
-        storedLinkCount: storeLinksResult.inserted,
-        subject: item.message.subject,
-      });
-
-      inserted += 1;
     }
-
-    return { fetched: inserted };
   },
 });
 

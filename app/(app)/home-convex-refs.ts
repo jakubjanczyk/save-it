@@ -30,6 +30,27 @@ export const fetchFromGmail: FunctionReference<
   { fetched: number }
 > = makeFunctionReference("emails:fetchFromGmail");
 
+export const getActiveSyncRun: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  {
+    isStale: boolean;
+    run: {
+      id: GenericId<"syncRuns">;
+      lastHeartbeatAt: number;
+      progress: {
+        fetchedEmails: number;
+        insertedEmails: number;
+        processedEmails: number;
+        storedLinks: number;
+      };
+      startedAt: number;
+      status: "running";
+    };
+  } | null
+> = makeFunctionReference("syncruns:getActive");
+
 export const listWithPendingLinks: FunctionReference<
   "query",
   "public",

@@ -11,11 +11,24 @@ function formatFetchedMessage(fetched: number) {
 }
 
 export function FetchEmailsCard(props: {
+  disabled?: boolean;
+  disabledLabel?: string;
   onFetch: () => Promise<{ fetched: number }>;
 }) {
   const [status, setStatus] = useState<
     { tag: "idle" } | { tag: "loading" } | { tag: "error"; message: string }
   >({ tag: "idle" });
+
+  const disabled = status.tag === "loading" || (props.disabled ?? false);
+  let label = "Fetch new emails";
+
+  if (props.disabled) {
+    label = props.disabledLabel ?? "Sync in progress…";
+  }
+
+  if (status.tag === "loading") {
+    label = "Fetching…";
+  }
 
   return (
     <Card className="gap-3 py-4">
@@ -27,8 +40,11 @@ export function FetchEmailsCard(props: {
         ) : null}
 
         <Button
-          disabled={status.tag === "loading"}
+          disabled={disabled}
           onClick={async () => {
+            if (props.disabled) {
+              return;
+            }
             setStatus({ tag: "loading" });
             try {
               const result = await props.onFetch();
@@ -44,7 +60,7 @@ export function FetchEmailsCard(props: {
           }}
           size="sm"
         >
-          {status.tag === "loading" ? "Fetching…" : "Fetch new emails"}
+          {label}
         </Button>
       </CardContent>
     </Card>

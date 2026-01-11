@@ -11,6 +11,7 @@ describe("convex schema", () => {
         "oauthTokens",
         "senders",
         "settings",
+        "syncRuns",
         "syncLogs",
       ].sort()
     );
@@ -80,6 +81,20 @@ describe("convex schema", () => {
     expect(schema.tables.syncLogs[" indexes"]()).toContainEqual({
       indexDescriptor: "by_attemptedAt",
       fields: ["attemptedAt"],
+    });
+  });
+
+  test("defines syncRuns.by_startedAt index", () => {
+    expect(schema.tables.syncRuns[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_startedAt",
+      fields: ["startedAt"],
+    });
+  });
+
+  test("defines syncRuns.by_status_startedAt index", () => {
+    expect(schema.tables.syncRuns[" indexes"]()).toContainEqual({
+      indexDescriptor: "by_status_startedAt",
+      fields: ["status", "startedAt"],
     });
   });
 });

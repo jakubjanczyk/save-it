@@ -54,6 +54,29 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
   }).index("by_type", ["type"]),
 
+  syncRuns: defineTable({
+    status: v.union(
+      v.literal("running"),
+      v.literal("success"),
+      v.literal("error"),
+      v.literal("aborted")
+    ),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    lastHeartbeatAt: v.number(),
+    progress: v.object({
+      fetchedEmails: v.number(),
+      processedEmails: v.number(),
+      insertedEmails: v.number(),
+      storedLinks: v.number(),
+    }),
+    errorMessage: v.optional(v.string()),
+    errorName: v.optional(v.string()),
+    errorTag: v.optional(v.string()),
+  })
+    .index("by_status_startedAt", ["status", "startedAt"])
+    .index("by_startedAt", ["startedAt"]),
+
   syncLogs: defineTable({
     emailId: v.id("emails"),
     gmailId: v.string(),

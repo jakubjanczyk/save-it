@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  HistoryIcon,
   HomeIcon,
   LogsIcon,
   SettingsIcon,
@@ -42,6 +43,11 @@ const items = [
     title: "Sync logs",
     href: "/sync-logs",
     icon: LogsIcon,
+  },
+  {
+    title: "Sync runs",
+    href: "/sync-runs",
+    icon: HistoryIcon,
   },
   {
     title: "Settings",

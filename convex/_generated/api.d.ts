@@ -15,6 +15,7 @@ import type * as raindropauth from "../raindropauth.js";
 import type * as senders from "../senders.js";
 import type * as settings from "../settings.js";
 import type * as sync_logs from "../sync/logs.js";
+import type * as syncruns from "../syncruns.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   senders: typeof senders;
   settings: typeof settings;
   "sync/logs": typeof sync_logs;
+  syncruns: typeof syncruns;
 }>;
 
 /**

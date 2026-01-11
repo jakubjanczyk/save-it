@@ -133,6 +133,10 @@ function buildGmailQuery(senderPatterns: readonly string[]) {
   return `${unread} ${senders}`;
 }
 
+export function buildGmailSearchQuery(senderPatterns: readonly string[]) {
+  return buildGmailQuery(senderPatterns);
+}
+
 function isGmailRateLimitedError(error: unknown): boolean {
   return (
     isRecord(error) && (error as { _tag?: unknown })._tag === "GmailRateLimited"

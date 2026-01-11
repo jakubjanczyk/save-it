@@ -27,6 +27,16 @@ test("calls onFetch when Fetch new emails is clicked", async () => {
   expect(onFetch).toHaveBeenCalledOnce();
 });
 
+test("disables Fetch new emails button when disabled", () => {
+  const onFetch = vi.fn(async () => ({ fetched: 1 }));
+  const rendered = render(<FetchEmailsCard disabled onFetch={onFetch} />);
+
+  expect(
+    rendered.getByRole("button", { name: "Sync in progress…" })
+  ).toBeDisabled();
+  expect(onFetch).not.toHaveBeenCalled();
+});
+
 test("uses singular email when fetched=1", async () => {
   const user = userEvent.setup();
   const rendered = render(

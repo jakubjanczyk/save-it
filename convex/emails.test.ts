@@ -239,6 +239,248 @@ test("fetchFromGmail uses configured email fetch limit", async () => {
   }
 });
 
+test("fetchFromGmail throws when a sync is already running", async () => {
+  const t = convexTest(schema, modules);
+  const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1000);
+
+  try {
+    await t.mutation(addSender, { email: "*@substack.com" });
+    await t.mutation(saveTokens, {
+      accessToken: "access",
+      expiresAt: 2000,
+      refreshToken: "refresh",
+    });
+
+    await t.run((ctx) =>
+      ctx.db.insert("syncRuns", {
+        lastHeartbeatAt: 1000,
+        progress: {
+          fetchedEmails: 0,
+          insertedEmails: 0,
+          processedEmails: 0,
+          storedLinks: 0,
+        },
+        startedAt: 1000,
+        status: "running",
+      })
+    );
+
+    await expect(t.action(fetchFromGmail, {})).rejects.toThrow(
+      "Sync already in progress"
+    );
+  } finally {
+    nowSpy.mockRestore();
+  }
+});
+
+test("fetchFromGmail updates sync run heartbeat on a fixed interval while running", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const messageResponse = Promise.withResolvers<Response>();
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ messages: [{ id: "m1" }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      return messageResponse.promise;
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    const actionPromise = t.action(fetchFromGmail, {});
+
+    let runId: GenericId<"syncRuns"> | undefined;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const runs = await t.run((ctx) => ctx.db.query("syncRuns").collect());
+      if (runs.length === 1) {
+        runId = runs[0]?._id;
+        break;
+      }
+      await Promise.resolve();
+    }
+
+    if (!runId) {
+      throw new Error("Expected sync run to be created");
+    }
+
+    const initial = await t.run((ctx) => ctx.db.get(runId));
+    const initialHeartbeat = initial?.lastHeartbeatAt;
+    expect(initialHeartbeat).toBeTypeOf("number");
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    const updated = await t.run((ctx) => ctx.db.get(runId));
+    expect(updated?.lastHeartbeatAt).toBeGreaterThan(
+      initialHeartbeat as number
+    );
+
+    const html = `<a href="https://substack.com/app-link/post/abc">Read</a>`;
+    messageResponse.resolve(
+      new Response(
+        JSON.stringify({
+          id: "m1",
+          internalDate: "1700000000000",
+          payload: {
+            headers: [
+              { name: "From", value: "newsletter@substack.com" },
+              { name: "Subject", value: "Hello" },
+            ],
+            parts: [
+              {
+                body: { data: encodeBase64Url(html) },
+                mimeType: "text/html",
+              },
+            ],
+          },
+        }),
+        {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }
+      )
+    );
+
+    await actionPromise;
+  } finally {
+    restoreFetch();
+    vi.useRealTimers();
+  }
+});
+
+test("fetchFromGmail stops heartbeats after completion", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ messages: [{ id: "m1" }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1") {
+      const html = `<a href="https://substack.com/app-link/post/abc">Read</a>`;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: "m1",
+            internalDate: "1700000000000",
+            payload: {
+              headers: [
+                { name: "From", value: "newsletter@substack.com" },
+                { name: "Subject", value: "Hello" },
+              ],
+              parts: [
+                {
+                  body: { data: encodeBase64Url(html) },
+                  mimeType: "text/html",
+                },
+              ],
+            },
+          }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(fetchFromGmail, {});
+
+    const runs = await t.run((ctx) => ctx.db.query("syncRuns").collect());
+    expect(runs).toHaveLength(1);
+
+    const [run] = runs;
+    if (!run) {
+      throw new Error("Expected a sync run");
+    }
+    const runId = run._id;
+    const finished = await t.run((ctx) => ctx.db.get(runId));
+    const lastHeartbeatAt = finished?.lastHeartbeatAt;
+    expect(lastHeartbeatAt).toBeTypeOf("number");
+
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    const stillFinished = await t.run((ctx) => ctx.db.get(runId));
+    expect(stillFinished?.lastHeartbeatAt).toBe(lastHeartbeatAt);
+  } finally {
+    restoreFetch();
+    vi.useRealTimers();
+  }
+});
+
+test("fetchFromGmail stops heartbeats after failure", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+
+  try {
+    await expect(t.action(fetchFromGmail, {})).rejects.toThrow();
+
+    const runs = await t.run((ctx) => ctx.db.query("syncRuns").collect());
+    expect(runs).toHaveLength(1);
+
+    const [run] = runs;
+    if (!run) {
+      throw new Error("Expected a sync run");
+    }
+    const runId = run._id;
+    const finished = await t.run((ctx) => ctx.db.get(runId));
+    const lastHeartbeatAt = finished?.lastHeartbeatAt;
+    expect(lastHeartbeatAt).toBeTypeOf("number");
+
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    const stillFinished = await t.run((ctx) => ctx.db.get(runId));
+    expect(stillFinished?.lastHeartbeatAt).toBe(lastHeartbeatAt);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("fetchFromGmail stores link titles", async () => {
   const t = convexTest(schema, modules);
 
