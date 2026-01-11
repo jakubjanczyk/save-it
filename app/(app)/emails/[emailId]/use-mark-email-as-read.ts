@@ -24,7 +24,7 @@ export function useMarkEmailAsRead(params: {
         emailId: params.emailId,
       });
       toast.success(formatMarkAsReadMessage(result.discarded));
-      router.push("/");
+      router.push("/inbox");
       router.refresh();
     } catch (error) {
       toast.error(

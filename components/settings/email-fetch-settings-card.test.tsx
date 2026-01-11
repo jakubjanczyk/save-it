@@ -21,17 +21,44 @@ afterEach(() => {
 test("shows email fetch limit label", () => {
   useMutationMock.mockReturnValue(() => null);
 
-  const rendered = render(<EmailFetchSettingsCard storedValue="10" />);
+  const rendered = render(
+    <EmailFetchSettingsCard
+      storedFetchLimit="10"
+      storedFinalizeAction="markAsRead"
+    />
+  );
 
   expect(
     rendered.getByRole("spinbutton", { name: "Emails per fetch" })
   ).toBeInTheDocument();
 });
 
+test("shows email finalize action label", () => {
+  useMutationMock.mockReturnValue(() => null);
+
+  const rendered = render(
+    <EmailFetchSettingsCard
+      storedFetchLimit="10"
+      storedFinalizeAction="markAsRead"
+    />
+  );
+
+  expect(
+    rendered.getByRole("combobox", {
+      name: "When finished processing an email",
+    })
+  ).toBeInTheDocument();
+});
+
 test("shows Save button", () => {
   useMutationMock.mockReturnValue(() => null);
 
-  const rendered = render(<EmailFetchSettingsCard storedValue="10" />);
+  const rendered = render(
+    <EmailFetchSettingsCard
+      storedFetchLimit="10"
+      storedFinalizeAction="markAsRead"
+    />
+  );
 
   expect(rendered.getByRole("button", { name: "Save" })).toBeInTheDocument();
 });

@@ -61,6 +61,13 @@ const markAsRead: FunctionReference<
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
 
+const archiveEmail: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+> = makeFunctionReference("emails:archive");
+
 const retrySyncEmail: FunctionReference<
   "action",
   "public",
@@ -1074,6 +1081,113 @@ test("markAsRead does not discard links if Gmail call fails", async () => {
 
   const pending = await t.run((ctx) => ctx.db.get(pendingId));
   expect(pending?.status).toBe("pending");
+});
+
+test("archive removes inbox label via Gmail modify endpoint", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input, init) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        removeLabelIds?: string[];
+      };
+      expect(body.removeLabelIds).toContain("INBOX");
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(archiveEmail, { emailId });
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("archive marks email as read in the database", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "newsletter@example.com",
+      gmailId: "m1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages/m1/modify") {
+      return Promise.resolve(
+        new Response(JSON.stringify({}), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(archiveEmail, { emailId });
+  } finally {
+    restoreFetch();
+  }
+
+  const email = await t.run((ctx) => ctx.db.get(emailId));
+  expect(email?.markedAsRead).toBe(true);
 });
 
 test("storeLinks skips inserting a duplicate url across emails", async () => {

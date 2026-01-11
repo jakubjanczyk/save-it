@@ -10,25 +10,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   DEFAULT_EMAIL_FETCH_LIMIT,
+  DEFAULT_EMAIL_FINALIZE_ACTION,
   parseEmailFetchLimit,
+  parseEmailFinalizeAction,
 } from "@/lib/settings";
-import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "@/lib/settings-keys";
+import {
+  EMAIL_FETCH_LIMIT_SETTING_KEY,
+  EMAIL_FINALIZE_ACTION_SETTING_KEY,
+} from "@/lib/settings-keys";
 
 import { setSetting } from "./convex-refs";
 
-export function EmailFetchSettingsCard(props: { storedValue: string | null }) {
+export function EmailFetchSettingsCard(props: {
+  storedFetchLimit: string | null;
+  storedFinalizeAction: string | null;
+}) {
   const router = useRouter();
   const saveSetting = useMutation(setSetting);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const defaultValue = parseEmailFetchLimit(props.storedValue).toString();
+  const defaultFetchLimit = parseEmailFetchLimit(
+    props.storedFetchLimit
+  ).toString();
+  const defaultFinalizeAction = parseEmailFinalizeAction(
+    props.storedFinalizeAction
+  );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Email fetching</CardTitle>
+        <CardTitle>Email</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         <form
@@ -38,17 +51,33 @@ export function EmailFetchSettingsCard(props: { storedValue: string | null }) {
             setError(null);
 
             const formData = new FormData(event.currentTarget);
-            const value = formData.get("emailFetchLimit");
-            const raw = typeof value === "string" ? value : "";
+            const fetchLimitValue = formData.get("emailFetchLimit");
+            const fetchLimitRaw =
+              typeof fetchLimitValue === "string" ? fetchLimitValue : "";
 
-            const normalized = parseEmailFetchLimit(raw).toString();
+            const finalizeActionValue = formData.get("emailFinalizeAction");
+            const finalizeActionRaw =
+              typeof finalizeActionValue === "string"
+                ? finalizeActionValue
+                : "";
+
+            const normalizedFetchLimit =
+              parseEmailFetchLimit(fetchLimitRaw).toString();
+            const normalizedFinalizeAction =
+              parseEmailFinalizeAction(finalizeActionRaw);
 
             setSaving(true);
             try {
-              await saveSetting({
-                key: EMAIL_FETCH_LIMIT_SETTING_KEY,
-                value: normalized,
-              });
+              await Promise.all([
+                saveSetting({
+                  key: EMAIL_FETCH_LIMIT_SETTING_KEY,
+                  value: normalizedFetchLimit,
+                }),
+                saveSetting({
+                  key: EMAIL_FINALIZE_ACTION_SETTING_KEY,
+                  value: normalizedFinalizeAction,
+                }),
+              ]);
               toast.success("Saved.");
               router.refresh();
             } catch (error) {
@@ -65,7 +94,7 @@ export function EmailFetchSettingsCard(props: { storedValue: string | null }) {
             <Input
               aria-invalid={error != null}
               className="w-44"
-              defaultValue={defaultValue}
+              defaultValue={defaultFetchLimit}
               id="email-fetch-limit"
               inputMode="numeric"
               min={1}
@@ -73,6 +102,24 @@ export function EmailFetchSettingsCard(props: { storedValue: string | null }) {
               placeholder={DEFAULT_EMAIL_FETCH_LIMIT.toString()}
               type="number"
             />
+          </div>
+
+          <label className="mt-2 font-medium text-sm" htmlFor="email-finalize">
+            When finished processing an email
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-invalid={error != null}
+              className="h-9 w-44 min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] md:text-sm dark:bg-input/30"
+              defaultValue={defaultFinalizeAction}
+              id="email-finalize"
+              name="emailFinalizeAction"
+            >
+              <option value={DEFAULT_EMAIL_FINALIZE_ACTION}>
+                Mark as read
+              </option>
+              <option value="archive">Archive</option>
+            </select>
             <Button disabled={saving} size="sm" type="submit">
               {saving ? "Saving…" : "Save"}
             </Button>

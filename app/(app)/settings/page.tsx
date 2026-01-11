@@ -17,21 +17,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireEnv } from "@/lib/require-env";
-import { EMAIL_FETCH_LIMIT_SETTING_KEY } from "@/lib/settings-keys";
+import {
+  EMAIL_FETCH_LIMIT_SETTING_KEY,
+  EMAIL_FINALIZE_ACTION_SETTING_KEY,
+} from "@/lib/settings-keys";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
-  const [storedLimit, googleTokens, raindropTokens] = await Promise.all([
-    fetchQuery(
-      getSetting,
-      { key: EMAIL_FETCH_LIMIT_SETTING_KEY },
-      { url: convexUrl }
-    ),
-    fetchQuery(getGoogleTokens, {}, { url: convexUrl }),
-    fetchQuery(getRaindropTokens, {}, { url: convexUrl }),
-  ]);
+  const [storedLimit, storedFinalizeAction, googleTokens, raindropTokens] =
+    await Promise.all([
+      fetchQuery(
+        getSetting,
+        { key: EMAIL_FETCH_LIMIT_SETTING_KEY },
+        { url: convexUrl }
+      ),
+      fetchQuery(
+        getSetting,
+        { key: EMAIL_FINALIZE_ACTION_SETTING_KEY },
+        { url: convexUrl }
+      ),
+      fetchQuery(getGoogleTokens, {}, { url: convexUrl }),
+      fetchQuery(getRaindropTokens, {}, { url: convexUrl }),
+    ]);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
@@ -56,7 +65,10 @@ export default async function SettingsPage() {
         </CardFooter>
       </Card>
 
-      <EmailFetchSettingsCard storedValue={storedLimit} />
+      <EmailFetchSettingsCard
+        storedFetchLimit={storedLimit}
+        storedFinalizeAction={storedFinalizeAction}
+      />
       <ConnectionsCard
         gmailConnected={googleTokens !== null}
         raindropConnected={raindropTokens !== null}

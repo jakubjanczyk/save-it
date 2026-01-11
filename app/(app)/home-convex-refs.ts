@@ -44,6 +44,13 @@ export const markEmailAsRead: FunctionReference<
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
 
+export const archiveEmail: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+> = makeFunctionReference("emails:archive");
+
 export const listLinksByEmail: FunctionReference<
   "query",
   "public",

@@ -6,11 +6,17 @@ import type { GenericId } from "convex/values";
 import { EmailDetailView } from "@/components/email-detail-view";
 
 import type { EmailListItem, LinkDoc } from "../../home-convex-refs";
-import { discardLink, markEmailAsRead, saveLink } from "../../home-convex-refs";
+import {
+  archiveEmail,
+  discardLink,
+  markEmailAsRead,
+  saveLink,
+} from "../../home-convex-refs";
 
 import { EmailDetailShortcuts } from "./email-detail-shortcuts";
 import { openInNewTab } from "./open-in-new-tab";
 import { toSelectableLinks } from "./to-selectable-links";
+import { useArchiveEmail } from "./use-archive-email";
 import { useLinkActions } from "./use-link-actions";
 import { useLinkSelection } from "./use-link-selection";
 import { useMarkEmailAsRead } from "./use-mark-email-as-read";
@@ -25,6 +31,7 @@ export function EmailDetailClient(props: {
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
   const markAsRead = useAction(markEmailAsRead);
+  const archive = useAction(archiveEmail);
 
   const {
     selectedLink,
@@ -60,6 +67,11 @@ export function EmailDetailClient(props: {
     markAsRead,
   });
 
+  const archiveCurrentEmail = useArchiveEmail({
+    archive,
+    emailId: props.email._id,
+  });
+
   return (
     <>
       <EmailDetailShortcuts
@@ -89,6 +101,7 @@ export function EmailDetailClient(props: {
         nextHref={
           props.nextEmailId ? `/emails/${props.nextEmailId}` : undefined
         }
+        onArchive={archiveCurrentEmail}
         onDiscardLink={async (linkId) => {
           await discardWithSelection(linkId as GenericId<"links">);
         }}

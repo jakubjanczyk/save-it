@@ -2,6 +2,7 @@ import { Cause, Chunk, Effect, Exit } from "effect";
 import { expect, test } from "vitest";
 
 import {
+  archive,
   fetchEmails,
   fetchMessageFull,
   mapGmailError,
@@ -164,6 +165,29 @@ test("markAsRead completes on success", async () => {
     );
 
   await Effect.runPromise(markAsRead("token", "m1", { fetcher }));
+});
+
+test("archive removes inbox and unread labels", async () => {
+  const fetcher = (input: string, init?: RequestInit) => {
+    const url = new URL(input, "https://example.test");
+    expect(url.pathname).toBe("/gmail/v1/users/me/messages/m1/modify");
+
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      removeLabelIds?: string[];
+    };
+    expect(body.removeLabelIds).toEqual(["INBOX", "UNREAD"]);
+
+    return Promise.resolve(
+      new Response(JSON.stringify({}), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      })
+    );
+  };
+
+  await Effect.runPromise(
+    archive("token", "m1", { fetcher, baseUrl: "https://example.test" })
+  );
 });
 
 test("fetchMessageFull returns parsed html for a text/html part", async () => {

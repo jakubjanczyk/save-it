@@ -209,3 +209,38 @@ test("calls onMarkAsRead when Mark as read is clicked", async () => {
 
   expect(onMarkAsRead).toHaveBeenCalled();
 });
+
+test("calls onArchive when Archive is clicked", async () => {
+  const onArchive = vi.fn();
+  const user = userEvent.setup();
+  const rendered = render(
+    <EmailDetailView
+      backHref="/inbox"
+      email={{
+        extractionError: false,
+        from: "newsletter@example.com",
+        id: "e1",
+        pendingLinkCount: 2,
+        receivedAt: 0,
+        subject: "Hello",
+      }}
+      links={[
+        {
+          description: "Desc",
+          id: "l1",
+          status: "pending",
+          title: "Link 1",
+          url: "https://example.com/1",
+        },
+      ]}
+      linksLoading={false}
+      onArchive={onArchive}
+      onDiscardLink={() => undefined}
+      onSaveLink={() => undefined}
+    />
+  );
+
+  await user.click(rendered.getByRole("button", { name: "Archive" }));
+
+  expect(onArchive).toHaveBeenCalled();
+});

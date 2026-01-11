@@ -3,6 +3,7 @@ import { type GenericId, v } from "convex/values";
 import { Effect, pipe } from "effect";
 
 import {
+  archive as archiveGmail,
   fetchEmails,
   fetchMessageFull,
   type GmailFullMessage,
@@ -669,42 +670,68 @@ export const markEmailAsRead = internalMutation({
   },
 });
 
+type GmailFinalizeOperation = (
+  accessToken: string,
+  gmailId: string
+) => ReturnType<typeof markGmailAsRead>;
+
+async function finalizeEmailInGmail(
+  ctx: ActionCtx,
+  emailId: GenericId<"emails">,
+  operation: GmailFinalizeOperation
+) {
+  const email = await ctx.runQuery(getEmailRef, { emailId });
+
+  if (!email) {
+    throw new Error("Email not found");
+  }
+
+  if (email.markedAsRead) {
+    return { discarded: 0 };
+  }
+
+  const { loadTokens, persistTokens, refreshTokens } =
+    createGoogleTokenFlow(ctx);
+
+  const program = withFreshToken(
+    loadTokens,
+    persistTokens,
+    (accessToken) => operation(accessToken, email.gmailId),
+    { refreshTokens }
+  );
+
+  await Effect.runPromise(program);
+
+  const discardResult = await ctx.runMutation(discardPendingLinksRef, {
+    emailId,
+  });
+
+  await ctx.runMutation(markEmailAsReadRef, {
+    emailId,
+    processedAt: Date.now(),
+  });
+
+  return { discarded: discardResult.discarded };
+}
+
 export const markAsRead = action({
   args: { emailId: v.id("emails") },
   handler: async (ctx, args) => {
-    const email = await ctx.runQuery(getEmailRef, {
-      emailId: args.emailId as GenericId<"emails">,
-    });
-
-    if (!email) {
-      throw new Error("Email not found");
-    }
-
-    if (email.markedAsRead) {
-      return { discarded: 0 };
-    }
-
-    const { loadTokens, persistTokens, refreshTokens } =
-      createGoogleTokenFlow(ctx);
-
-    const program = withFreshToken(
-      loadTokens,
-      persistTokens,
-      (accessToken) => markGmailAsRead(accessToken, email.gmailId),
-      { refreshTokens }
+    return await finalizeEmailInGmail(
+      ctx,
+      args.emailId as GenericId<"emails">,
+      (accessToken, gmailId) => markGmailAsRead(accessToken, gmailId)
     );
+  },
+});
 
-    await Effect.runPromise(program);
-
-    const discardResult = await ctx.runMutation(discardPendingLinksRef, {
-      emailId: args.emailId as GenericId<"emails">,
-    });
-
-    await ctx.runMutation(markEmailAsReadRef, {
-      emailId: args.emailId as GenericId<"emails">,
-      processedAt: Date.now(),
-    });
-
-    return { discarded: discardResult.discarded };
+export const archive = action({
+  args: { emailId: v.id("emails") },
+  handler: async (ctx, args) => {
+    return await finalizeEmailInGmail(
+      ctx,
+      args.emailId as GenericId<"emails">,
+      (accessToken, gmailId) => archiveGmail(accessToken, gmailId)
+    );
   },
 });

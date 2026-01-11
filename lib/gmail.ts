@@ -340,6 +340,28 @@ export function markAsRead(
   messageId: string,
   options?: GmailOptions
 ) {
+  return modifyMessageLabels(accessToken, messageId, ["UNREAD"], options);
+}
+
+export function archive(
+  accessToken: string,
+  messageId: string,
+  options?: GmailOptions
+) {
+  return modifyMessageLabels(
+    accessToken,
+    messageId,
+    ["INBOX", "UNREAD"],
+    options
+  );
+}
+
+function modifyMessageLabels(
+  accessToken: string,
+  messageId: string,
+  removeLabelIds: string[],
+  options?: GmailOptions
+) {
   const fetcher = getFetcher(options);
   const baseUrl = getBaseUrl(options);
 
@@ -351,7 +373,7 @@ export function markAsRead(
   return Effect.tryPromise({
     try: async () => {
       await fetchJson(fetcher, url.toString(), {
-        body: JSON.stringify({ removeLabelIds: ["UNREAD"] }),
+        body: JSON.stringify({ removeLabelIds }),
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "content-type": "application/json",

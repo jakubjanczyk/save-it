@@ -26,6 +26,7 @@ export interface EmailDetailViewProps {
   onSaveLink: (linkId: string) => Promise<void> | void;
   onDiscardLink: (linkId: string) => Promise<void> | void;
   onMarkAsRead?: () => Promise<void> | void;
+  onArchive?: () => Promise<void> | void;
 }
 
 export function EmailDetailView({
@@ -33,6 +34,7 @@ export function EmailDetailView({
   email,
   links,
   linksLoading = false,
+  onArchive,
   onDiscardLink,
   onSaveLink,
   onMarkAsRead,
@@ -110,17 +112,32 @@ export function EmailDetailView({
           <span className="text-muted-foreground text-xs">
             Press ? for shortcuts
           </span>
-          {onMarkAsRead ? (
-            <Button
-              className="ml-auto"
-              onClick={async () => {
-                await onMarkAsRead();
-              }}
-              size="sm"
-              type="button"
-            >
-              Mark as read
-            </Button>
+          {onMarkAsRead || onArchive ? (
+            <div className="ml-auto flex items-center gap-2">
+              {onArchive ? (
+                <Button
+                  onClick={async () => {
+                    await onArchive();
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  Archive
+                </Button>
+              ) : null}
+              {onMarkAsRead ? (
+                <Button
+                  onClick={async () => {
+                    await onMarkAsRead();
+                  }}
+                  size="sm"
+                  type="button"
+                >
+                  Mark as read
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

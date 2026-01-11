@@ -4,6 +4,8 @@ import { v } from "convex/values";
 import { Effect } from "effect";
 
 import { createRaindropBookmark } from "../lib/raindrop";
+import { parseEmailFinalizeAction } from "../lib/settings";
+import { EMAIL_FINALIZE_ACTION_SETTING_KEY } from "../lib/settings-keys";
 
 import {
   type ActionCtx,
@@ -81,6 +83,20 @@ const markEmailAsReadRef: FunctionReference<
   { discarded: number }
 > = makeFunctionReference("emails:markAsRead");
 
+const archiveEmailRef: FunctionReference<
+  "action",
+  "public",
+  { emailId: GenericId<"emails"> },
+  { discarded: number }
+> = makeFunctionReference("emails:archive");
+
+const getSettingRef: FunctionReference<
+  "query",
+  "public",
+  { key: string },
+  string | null
+> = makeFunctionReference("settings:get");
+
 async function finalizeEmailIfDone(
   ctx: ActionCtx,
   emailId: GenericId<"emails">
@@ -92,7 +108,16 @@ async function finalizeEmailIfDone(
   }
 
   try {
-    await ctx.runAction(markEmailAsReadRef, { emailId });
+    const storedFinalizeAction = await ctx.runQuery(getSettingRef, {
+      key: EMAIL_FINALIZE_ACTION_SETTING_KEY,
+    });
+    const finalizeAction = parseEmailFinalizeAction(storedFinalizeAction);
+
+    if (finalizeAction === "archive") {
+      await ctx.runAction(archiveEmailRef, { emailId });
+    } else {
+      await ctx.runAction(markEmailAsReadRef, { emailId });
+    }
   } catch {
     // Best-effort. If Gmail isn't connected or token refresh fails, keep the email visible for retry.
   }
