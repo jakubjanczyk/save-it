@@ -216,19 +216,19 @@ export function FocusDeck(props: {
                 opacity: dismissingAction === "save" ? 1 : saveOpacity,
               }}
             >
-              Saved
+              Save
             </motion.div>
             <motion.div
               className={cn(
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
                 "rounded-full border px-6 py-3 font-semibold text-lg shadow-sm",
-                "border-destructive/40 bg-destructive/15 text-destructive"
+                "border-destructive/60 bg-destructive/25 text-red-400"
               )}
               style={{
                 opacity: dismissingAction === "discard" ? 1 : discardOpacity,
               }}
             >
-              Discarded
+              Discard
             </motion.div>
           </div>
         </Card>

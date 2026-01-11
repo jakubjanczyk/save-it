@@ -31,7 +31,7 @@ export function EmailList({
   }
 
   return (
-    <ul className="divide-y overflow-hidden rounded-md border">
+    <ul className="divide-y divide-border/50 overflow-hidden rounded-lg border">
       {emails.map((email) => {
         const selected = email.id === selectedEmailId;
         return (
@@ -39,8 +39,10 @@ export function EmailList({
             <Link
               aria-current={selected ? "true" : undefined}
               className={cn(
-                "flex w-full flex-col items-start gap-3 px-4 py-3 text-left sm:flex-row sm:items-center sm:justify-between",
-                selected ? "bg-accent" : "hover:bg-muted/50"
+                "flex w-full flex-col items-start gap-3 px-4 py-3 text-left transition-colors duration-150 sm:flex-row sm:items-center sm:justify-between",
+                selected
+                  ? "border-l-2 border-l-primary bg-accent"
+                  : "hover:bg-muted/40"
               )}
               href={`${emailHrefPrefix}/${email.id}`}
             >
@@ -54,12 +56,12 @@ export function EmailList({
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                 {email.extractionError ? (
-                  <span className="rounded bg-destructive/10 px-2 py-1 font-medium text-destructive text-xs">
+                  <span className="rounded bg-destructive/15 px-2 py-1 font-medium text-destructive text-xs">
                     Extraction error
                   </span>
                 ) : null}
                 {email.pendingLinkCount > 0 ? (
-                  <span className="rounded bg-muted px-2 py-1 font-medium text-xs">
+                  <span className="rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
                     {email.pendingLinkCount} pending
                   </span>
                 ) : null}

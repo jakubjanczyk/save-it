@@ -15,10 +15,11 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground sm:p-6">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex min-h-dvh items-center justify-center bg-background p-4 text-foreground sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.02_55)_0%,transparent_60%)]" />
+      <Card className="relative w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Login to Save it</CardTitle>
+          <CardTitle className="text-xl">Login to Save it</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="grid gap-4">

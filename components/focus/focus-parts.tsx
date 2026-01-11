@@ -26,7 +26,7 @@ export function FocusHeader(props: {
         >
           {props.subject}
         </CardTitle>
-        <span className="shrink-0 rounded bg-muted px-2 py-1 font-medium text-xs">
+        <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
           {props.progress}
         </span>
       </div>
@@ -89,20 +89,21 @@ export function FocusActions(props: {
         className="w-auto"
         disabled={props.disabled}
         onClick={async () => {
-          await props.onSave();
+          await props.onDiscard();
         }}
+        variant="destructive"
       >
-        Save
+        Discard
       </Button>
       <Button
         className="w-auto"
         disabled={props.disabled}
         onClick={async () => {
-          await props.onDiscard();
+          await props.onSave();
         }}
-        variant="secondary"
+        variant="success"
       >
-        Discard
+        Save
       </Button>
       <Button asChild className="ml-auto w-auto" variant="outline">
         <a href={props.url} rel="noreferrer noopener" target="_blank">
@@ -116,17 +117,16 @@ export function FocusActions(props: {
 function overlayConfig(action: FocusAction) {
   if (action === "save") {
     return {
-      className:
-        "border-emerald-500/40 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+      className: "border-success/50 bg-success/20 text-success",
       icon: <Check className="h-5 w-5" />,
-      label: "Saved",
+      label: "Save",
     };
   }
 
   return {
-    className: "border-destructive/40 bg-destructive/20 text-destructive",
+    className: "border-destructive/50 bg-destructive/20 text-destructive",
     icon: <X className="h-5 w-5" />,
-    label: "Discarded",
+    label: "Discard",
   };
 }
 

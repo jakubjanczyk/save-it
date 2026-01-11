@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { summarizeError } from "@/lib/logging/error-summary";
 
 export function FetchEmailsCard(props: {
   isRunning?: boolean;
@@ -15,9 +16,9 @@ export function FetchEmailsCard(props: {
 
   useEffect(() => {
     if (props.isRunning) {
-      setIsStarting(false)
+      setIsStarting(false);
     }
-  }, [props.isRunning])
+  }, [props.isRunning]);
 
   const disabled = isStarting || (props.isRunning ?? false);
   let label = "Fetch new emails";
@@ -42,16 +43,34 @@ export function FetchEmailsCard(props: {
               return;
             }
             setErrorMessage(null);
-            setIsStarting(true)
-              props.onFetch()
-                .then(() => {
-                  toast.success("Sync started.");
-                }).catch((error: unknown) => {
-                  setIsStarting(false)
-                  setErrorMessage(
-                    error instanceof Error ? error.message : "Fetch failed"
-                  );
-                })
+            setIsStarting(true);
+
+            let fetchPromise: Promise<unknown>;
+            try {
+              fetchPromise = props.onFetch();
+            } catch (error: unknown) {
+              console.error("FetchEmailsCard onFetch threw", {
+                error: summarizeError(error),
+              });
+              setIsStarting(false);
+              setErrorMessage(
+                error instanceof Error ? error.message : "Fetch failed"
+              );
+              return;
+            }
+
+            fetchPromise
+              .then(() => {
+                toast.success("Sync started.");
+              })
+              .catch((error: unknown) => {
+                setErrorMessage(
+                  error instanceof Error ? error.message : "Fetch failed"
+                );
+              })
+              .finally(() => {
+                setIsStarting(false);
+              });
           }}
           size="sm"
           type="button"
