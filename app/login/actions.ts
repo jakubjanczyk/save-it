@@ -40,9 +40,13 @@ export async function login(
     expiresInSeconds: 60 * 60 * 24 * 30,
   });
 
+  const sessionMaxAgeSeconds = 60 * 60 * 24 * 30;
+
   const cookiesObject = await cookies();
   cookiesObject.set(SESSION_COOKIE_NAME, token, {
+    expires: new Date(Date.now() + sessionMaxAgeSeconds * 1000),
     httpOnly: true,
+    maxAge: sessionMaxAgeSeconds,
     sameSite: "lax",
     path: "/",
     secure: process.env.NODE_ENV === "production",

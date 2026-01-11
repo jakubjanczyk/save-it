@@ -121,3 +121,17 @@ test("sets httpOnly cookie on successful login", async () => {
 
   expect(cookiesSetMock.mock.calls[0]?.[2]?.httpOnly).toBe(true);
 });
+
+test("sets maxAge cookie on successful login", async () => {
+  process.env.APP_PASSWORD = "pw";
+  process.env.JWT_SECRET = "secret";
+
+  cookiesSetMock.mockClear();
+
+  const formData = new FormData();
+  formData.set("password", "pw");
+
+  await expect(login({}, formData)).rejects.toThrow("NEXT_REDIRECT");
+
+  expect(cookiesSetMock.mock.calls[0]?.[2]?.maxAge).toBe(60 * 60 * 24 * 30);
+});
