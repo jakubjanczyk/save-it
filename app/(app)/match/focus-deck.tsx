@@ -171,7 +171,7 @@ export function FocusDeck(props: {
 
           dragControls.start(event);
         }}
-        style={{ rotate, x }}
+        style={{ rotate, touchAction: "pan-y", x }}
       >
         <Card className="relative">
           <motion.div style={{ filter: blurFilter }}>

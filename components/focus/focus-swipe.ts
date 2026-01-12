@@ -3,12 +3,11 @@ import type { FocusAction } from "./types";
 export const SWIPE_THRESHOLD_PX = 90;
 
 export function isInteractiveTarget(target: unknown) {
-  if (!(target instanceof HTMLElement)) {
+  if (!(target instanceof Element)) {
     return false;
   }
 
-  const tagName = target.tagName.toLowerCase();
-  return tagName === "button" || tagName === "a";
+  return Boolean(target.closest("button,a"));
 }
 
 export function getSwipeAction(

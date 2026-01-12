@@ -117,7 +117,7 @@ test("shows Saved overlay when feedbackAction is save", () => {
     />
   );
 
-  expect(rendered.getByText("Saved")).toBeInTheDocument();
+  expect(rendered.getByText("Save", { selector: "div" })).toBeInTheDocument();
 });
 
 test("shows Discarded overlay when feedbackAction is discard", () => {
@@ -143,5 +143,7 @@ test("shows Discarded overlay when feedbackAction is discard", () => {
     />
   );
 
-  expect(rendered.getByText("Discarded")).toBeInTheDocument();
+  expect(
+    rendered.getByText("Discard", { selector: "div" })
+  ).toBeInTheDocument();
 });
