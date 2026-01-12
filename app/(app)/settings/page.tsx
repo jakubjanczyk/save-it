@@ -7,6 +7,7 @@ import {
   getRaindropTokens,
 } from "@/components/connections/convex-refs";
 import { getSetting } from "@/components/settings/convex-refs";
+import { BackgroundSyncSettingsCard } from "@/components/settings/background-sync-settings-card";
 import { EmailFetchSettingsCard } from "@/components/settings/email-fetch-settings-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,9 @@ import {
 } from "@/components/ui/card";
 import { requireEnv } from "@/lib/require-env";
 import {
+  BACKGROUND_SYNC_ENABLED_SETTING_KEY,
+  BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY,
+  BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
   EMAIL_FETCH_LIMIT_SETTING_KEY,
   EMAIL_FINALIZE_ACTION_SETTING_KEY,
 } from "@/lib/settings-keys";
@@ -26,8 +30,15 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
-  const [storedLimit, storedFinalizeAction, googleTokens, raindropTokens] =
-    await Promise.all([
+  const [
+    storedLimit,
+    storedFinalizeAction,
+    storedBackgroundSyncEnabled,
+    storedBackgroundSyncLocalHour,
+    storedBackgroundSyncTimeZone,
+    googleTokens,
+    raindropTokens,
+  ] = await Promise.all([
       fetchQuery(
         getSetting,
         { key: EMAIL_FETCH_LIMIT_SETTING_KEY },
@@ -36,6 +47,21 @@ export default async function SettingsPage() {
       fetchQuery(
         getSetting,
         { key: EMAIL_FINALIZE_ACTION_SETTING_KEY },
+        { url: convexUrl }
+      ),
+      fetchQuery(
+        getSetting,
+        { key: BACKGROUND_SYNC_ENABLED_SETTING_KEY },
+        { url: convexUrl }
+      ),
+      fetchQuery(
+        getSetting,
+        { key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY },
+        { url: convexUrl }
+      ),
+      fetchQuery(
+        getSetting,
+        { key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY },
         { url: convexUrl }
       ),
       fetchQuery(getGoogleTokens, {}, { url: convexUrl }),
@@ -68,6 +94,11 @@ export default async function SettingsPage() {
       <EmailFetchSettingsCard
         storedFetchLimit={storedLimit}
         storedFinalizeAction={storedFinalizeAction}
+      />
+      <BackgroundSyncSettingsCard
+        storedEnabled={storedBackgroundSyncEnabled}
+        storedLocalHour={storedBackgroundSyncLocalHour}
+        storedTimeZone={storedBackgroundSyncTimeZone}
       />
       <ConnectionsCard
         gmailConnected={googleTokens !== null}

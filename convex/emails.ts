@@ -5,7 +5,17 @@ import {
   archive as archiveGmail,
   markAsRead as markGmailAsRead,
 } from "../lib/gmail";
-import { internal } from "./_generated/api";
+import {
+  parseBackgroundSyncEnabled,
+  parseBackgroundSyncLocalHour,
+  parseBackgroundSyncTimeZone,
+} from "../lib/settings";
+import {
+  BACKGROUND_SYNC_ENABLED_SETTING_KEY,
+  BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY,
+  BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
+} from "../lib/settings-keys";
+import { api, internal } from "./_generated/api";
 import {
   action,
   internalAction,
@@ -20,6 +30,17 @@ import {
   retrySyncEmailProgram,
 } from "./emailsProcessingHelpers";
 
+function hourInTimeZone(now: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).formatToParts(now);
+
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  return hour ? Number.parseInt(hour, 10) : 0;
+}
+
 export const fetchFromGmail = action({
   args: {},
   handler: (ctx): Promise<{ fetched: number }> =>
@@ -30,6 +51,67 @@ export const fetchFromGmailInternal = internalAction({
   args: {},
   handler: (ctx): Promise<{ fetched: number }> =>
     Effect.runPromise(fetchFromGmailProgram(ctx)),
+});
+
+export const backgroundSyncTick = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const [enabledRaw, localHourRaw, timeZoneRaw] = await Promise.all([
+      ctx.runQuery(api.settings.get, {
+        key: BACKGROUND_SYNC_ENABLED_SETTING_KEY,
+      }),
+      ctx.runQuery(api.settings.get, {
+        key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY,
+      }),
+      ctx.runQuery(api.settings.get, {
+        key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
+      }),
+    ]);
+
+    const enabled = parseBackgroundSyncEnabled(enabledRaw);
+    const timeZone = parseBackgroundSyncTimeZone(timeZoneRaw);
+    const localHour = parseBackgroundSyncLocalHour(localHourRaw);
+    const nowLocalHour = hourInTimeZone(new Date(), timeZone);
+
+    if (!enabled) {
+      return { tag: "disabled" as const, localHour, nowLocalHour, timeZone };
+    }
+
+    if (nowLocalHour !== localHour) {
+      return { tag: "notDue" as const, localHour, nowLocalHour, timeZone };
+    }
+
+    try {
+      const result = await Effect.runPromise(fetchFromGmailProgram(ctx));
+      return {
+        fetched: result.fetched,
+        tag: "ran" as const,
+        localHour,
+        nowLocalHour,
+        timeZone,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message === "Sync already in progress") {
+        return {
+          tag: "alreadyRunning" as const,
+          localHour,
+          nowLocalHour,
+          timeZone,
+        };
+      }
+
+      if (error instanceof Error && error.message === "Gmail not connected") {
+        return {
+          tag: "gmailNotConnected" as const,
+          localHour,
+          nowLocalHour,
+          timeZone,
+        };
+      }
+
+      throw error;
+    }
+  },
 });
 
 export const startFetchFromGmail = action({
