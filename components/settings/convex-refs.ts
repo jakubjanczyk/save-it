@@ -13,3 +13,10 @@ export const setSetting: FunctionReference<
   { key: string; value: string },
   null
 > = makeFunctionReference("settings:set");
+
+export const setSettings: FunctionReference<
+  "mutation",
+  "public",
+  { entries: Array<{ key: string; value: string }> },
+  null
+> = makeFunctionReference("settings:setMany");

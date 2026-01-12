@@ -30,7 +30,7 @@ import {
 } from "@/lib/settings-keys";
 import { buildTimeZoneOptions, detectTimeZone } from "@/lib/time-zones";
 
-import { setSetting } from "./convex-refs";
+import { setSettings } from "./convex-refs";
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
   label: `${hour.toString().padStart(2, "0")}:00`,
@@ -43,7 +43,7 @@ export function BackgroundSyncSettingsCard(props: {
   storedTimeZone: string | null;
 }) {
   const router = useRouter();
-  const saveSetting = useMutation(setSetting);
+  const saveSettings = useMutation(setSettings);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -81,20 +81,22 @@ export function BackgroundSyncSettingsCard(props: {
 
             setSaving(true);
             try {
-              await Promise.all([
-                saveSetting({
-                  key: BACKGROUND_SYNC_ENABLED_SETTING_KEY,
-                  value: enabled ? "true" : "false",
-                }),
-                saveSetting({
-                  key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY,
-                  value: localHour.toString(),
-                }),
-                saveSetting({
-                  key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
-                  value: parseBackgroundSyncTimeZone(timeZone),
-                }),
-              ]);
+              await saveSettings({
+                entries: [
+                  {
+                    key: BACKGROUND_SYNC_ENABLED_SETTING_KEY,
+                    value: enabled ? "true" : "false",
+                  },
+                  {
+                    key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY,
+                    value: localHour.toString(),
+                  },
+                  {
+                    key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
+                    value: parseBackgroundSyncTimeZone(timeZone),
+                  },
+                ],
+              });
               toast.success("Saved.");
               router.refresh();
             } catch (error) {

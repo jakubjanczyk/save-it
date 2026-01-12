@@ -19,14 +19,14 @@ import {
   EMAIL_FINALIZE_ACTION_SETTING_KEY,
 } from "@/lib/settings-keys";
 
-import { setSetting } from "./convex-refs";
+import { setSettings } from "./convex-refs";
 
 export function EmailFetchSettingsCard(props: {
   storedFetchLimit: string | null;
   storedFinalizeAction: string | null;
 }) {
   const router = useRouter();
-  const saveSetting = useMutation(setSetting);
+  const saveSettings = useMutation(setSettings);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -68,16 +68,18 @@ export function EmailFetchSettingsCard(props: {
 
             setSaving(true);
             try {
-              await Promise.all([
-                saveSetting({
-                  key: EMAIL_FETCH_LIMIT_SETTING_KEY,
-                  value: normalizedFetchLimit,
-                }),
-                saveSetting({
-                  key: EMAIL_FINALIZE_ACTION_SETTING_KEY,
-                  value: normalizedFinalizeAction,
-                }),
-              ]);
+              await saveSettings({
+                entries: [
+                  {
+                    key: EMAIL_FETCH_LIMIT_SETTING_KEY,
+                    value: normalizedFetchLimit,
+                  },
+                  {
+                    key: EMAIL_FINALIZE_ACTION_SETTING_KEY,
+                    value: normalizedFinalizeAction,
+                  },
+                ],
+              });
               toast.success("Saved.");
               router.refresh();
             } catch (error) {
