@@ -72,6 +72,10 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
 
+  const visibleItems = isMobile
+    ? items.filter((item) => item.href !== "/" && item.href !== "/inbox")
+    : items;
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -79,7 +83,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Save it</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const isActive = isNavItemActive(pathname, item.href);
                 return (
                   <SidebarMenuItem key={item.href}>

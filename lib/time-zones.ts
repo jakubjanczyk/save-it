@@ -63,4 +63,3 @@ export function buildTimeZoneOptions(
 
   return Array.from(normalized).sort();
 }
-

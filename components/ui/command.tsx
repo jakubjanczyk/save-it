@@ -2,7 +2,7 @@
 
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
-import * as React from "react";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,10 @@ function CommandInput({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div className="flex items-center gap-2 border-b px-3" cmdk-input-wrapper="">
+    <div
+      className="flex items-center gap-2 border-b px-3"
+      cmdk-input-wrapper=""
+    >
       <Search className="h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         className={cn(
@@ -62,7 +65,10 @@ function CommandList({
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
     <CommandPrimitive.List
-      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+      className={cn(
+        "max-h-[300px] overflow-y-auto overflow-x-hidden",
+        className
+      )}
       {...props}
     />
   );
@@ -144,4 +150,3 @@ export {
   CommandSeparator,
   CommandShortcut,
 };
-

@@ -49,4 +49,3 @@ describe("getSwipeAction", () => {
     expect(getSwipeAction(-120, 10, 90)).toBe("discard");
   });
 });
-

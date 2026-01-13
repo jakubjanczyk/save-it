@@ -91,7 +91,10 @@ export const backgroundSyncTick = internalAction({
         timeZone,
       };
     } catch (error) {
-      if (error instanceof Error && error.message === "Sync already in progress") {
+      if (
+        error instanceof Error &&
+        error.message === "Sync already in progress"
+      ) {
         return {
           tag: "alreadyRunning" as const,
           localHour,

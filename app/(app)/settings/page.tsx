@@ -6,8 +6,8 @@ import {
   getGoogleTokens,
   getRaindropTokens,
 } from "@/components/connections/convex-refs";
-import { getSetting } from "@/components/settings/convex-refs";
 import { BackgroundSyncSettingsCard } from "@/components/settings/background-sync-settings-card";
+import { getSetting } from "@/components/settings/convex-refs";
 import { EmailFetchSettingsCard } from "@/components/settings/email-fetch-settings-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,34 +39,34 @@ export default async function SettingsPage() {
     googleTokens,
     raindropTokens,
   ] = await Promise.all([
-      fetchQuery(
-        getSetting,
-        { key: EMAIL_FETCH_LIMIT_SETTING_KEY },
-        { url: convexUrl }
-      ),
-      fetchQuery(
-        getSetting,
-        { key: EMAIL_FINALIZE_ACTION_SETTING_KEY },
-        { url: convexUrl }
-      ),
-      fetchQuery(
-        getSetting,
-        { key: BACKGROUND_SYNC_ENABLED_SETTING_KEY },
-        { url: convexUrl }
-      ),
-      fetchQuery(
-        getSetting,
-        { key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY },
-        { url: convexUrl }
-      ),
-      fetchQuery(
-        getSetting,
-        { key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY },
-        { url: convexUrl }
-      ),
-      fetchQuery(getGoogleTokens, {}, { url: convexUrl }),
-      fetchQuery(getRaindropTokens, {}, { url: convexUrl }),
-    ]);
+    fetchQuery(
+      getSetting,
+      { key: EMAIL_FETCH_LIMIT_SETTING_KEY },
+      { url: convexUrl }
+    ),
+    fetchQuery(
+      getSetting,
+      { key: EMAIL_FINALIZE_ACTION_SETTING_KEY },
+      { url: convexUrl }
+    ),
+    fetchQuery(
+      getSetting,
+      { key: BACKGROUND_SYNC_ENABLED_SETTING_KEY },
+      { url: convexUrl }
+    ),
+    fetchQuery(
+      getSetting,
+      { key: BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY },
+      { url: convexUrl }
+    ),
+    fetchQuery(
+      getSetting,
+      { key: BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY },
+      { url: convexUrl }
+    ),
+    fetchQuery(getGoogleTokens, {}, { url: convexUrl }),
+    fetchQuery(getRaindropTokens, {}, { url: convexUrl }),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">

@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Command,
   CommandEmpty,
@@ -15,9 +16,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   parseBackgroundSyncEnabled,
   parseBackgroundSyncLocalHour,
@@ -29,6 +32,7 @@ import {
   BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY,
 } from "@/lib/settings-keys";
 import { buildTimeZoneOptions, detectTimeZone } from "@/lib/time-zones";
+import { cn } from "@/lib/utils";
 
 import { setSettings } from "./convex-refs";
 

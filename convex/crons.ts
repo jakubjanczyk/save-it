@@ -11,4 +11,3 @@ crons.hourly(
 );
 
 export default crons;
-
