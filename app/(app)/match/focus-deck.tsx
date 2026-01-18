@@ -197,7 +197,7 @@ export function FocusDeck(props: {
               </div>
 
               <FocusActions
-                disabled={Boolean(props.dismissing)}
+                disabled={false}
                 onDiscard={props.onDiscard}
                 onSave={props.onSave}
                 url={activeItem.url}

@@ -22,7 +22,7 @@ interface LinkDoc {
   emailId: GenericId<"emails">;
   raindropId?: string;
   savedAt?: number;
-  status: "pending" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded";
   title: string;
   url: string;
 }
@@ -60,6 +60,24 @@ const markSavedRef = makeFunctionReference(
 
 const discardLinkRef = makeFunctionReference(
   "links:discardLink"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+>;
+
+const markProcessingRef = makeFunctionReference(
+  "links:markProcessing"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+>;
+
+const markPendingRef = makeFunctionReference(
+  "links:markPending"
 ) as unknown as FunctionReference<
   "mutation",
   "internal",
@@ -150,9 +168,20 @@ export const discard = action({
       return null;
     }
 
-    await ctx.runMutation(discardLinkRef, {
+    await ctx.runMutation(markProcessingRef, {
       linkId: args.linkId as GenericId<"links">,
     });
+
+    try {
+      await ctx.runMutation(discardLinkRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
+    } catch (error) {
+      await ctx.runMutation(markPendingRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
+      throw error;
+    }
 
     await finalizeEmailIfDone(ctx, link.emailId);
 
@@ -181,6 +210,28 @@ export const markSaved = internalMutation({
   },
 });
 
+export const markProcessing = internalMutation({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.linkId, {
+      status: "processing",
+    });
+
+    return null;
+  },
+});
+
+export const markPending = internalMutation({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.linkId, {
+      status: "pending",
+    });
+
+    return null;
+  },
+});
+
 export const discardLink = internalMutation({
   args: { linkId: v.id("links") },
   handler: async (ctx, args) => {
@@ -198,7 +249,12 @@ export const hasPendingLinksByEmail = internalQuery({
     const pending = await ctx.db
       .query("links")
       .withIndex("by_emailId", (q) => q.eq("emailId", args.emailId))
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "processing")
+        )
+      )
       .take(1);
 
     return pending.length > 0;
@@ -225,19 +281,38 @@ export const save = action({
       return { raindropId: link.raindropId ?? null };
     }
 
-    const raindropId = await Effect.runPromise(
-      createRaindropBookmark(tokens.accessToken, {
-        description: link.description,
-        title: link.title,
-        url: link.url,
-      })
-    );
-
-    await ctx.runMutation(markSavedRef, {
+    await ctx.runMutation(markProcessingRef, {
       linkId: args.linkId as GenericId<"links">,
-      raindropId,
-      savedAt: Date.now(),
     });
+
+    let raindropId: string;
+    try {
+      raindropId = await Effect.runPromise(
+        createRaindropBookmark(tokens.accessToken, {
+          description: link.description,
+          title: link.title,
+          url: link.url,
+        })
+      );
+    } catch (error) {
+      await ctx.runMutation(markPendingRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
+      throw error;
+    }
+
+    try {
+      await ctx.runMutation(markSavedRef, {
+        linkId: args.linkId as GenericId<"links">,
+        raindropId,
+        savedAt: Date.now(),
+      });
+    } catch (error) {
+      await ctx.runMutation(markPendingRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
+      throw error;
+    }
 
     await finalizeEmailIfDone(ctx, link.emailId);
 

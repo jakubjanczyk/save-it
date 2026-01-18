@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 export interface SelectableLink {
   description: string;
   id: GenericId<"links">;
-  status: "pending" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded";
   title: string;
   url: string;
 }

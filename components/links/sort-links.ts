@@ -1,7 +1,15 @@
-type LinkStatus = "pending" | "saved" | "discarded";
+type LinkStatus = "pending" | "processing" | "saved" | "discarded";
 
 function statusRank(status: LinkStatus): number {
-  return status === "pending" ? 0 : 1;
+  if (status === "pending") {
+    return 0;
+  }
+
+  if (status === "processing") {
+    return 1;
+  }
+
+  return 2;
 }
 
 export function sortLinksByStatus<TLink extends { status: LinkStatus }>(

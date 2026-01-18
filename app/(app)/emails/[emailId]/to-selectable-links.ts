@@ -5,7 +5,7 @@ export function toSelectableLinks(
     | Array<{
         description: string;
         _id: string;
-        status: "pending" | "saved" | "discarded";
+        status: "pending" | "processing" | "saved" | "discarded";
         title: string;
         url: string;
       }>

@@ -35,6 +35,7 @@ export default defineSchema({
     description: v.string(),
     status: v.union(
       v.literal("pending"),
+      v.literal("processing"),
       v.literal("saved"),
       v.literal("discarded")
     ),

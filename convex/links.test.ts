@@ -14,7 +14,7 @@ interface LinkListItem {
   _id: GenericId<"links">;
   description: string;
   emailId: GenericId<"emails">;
-  status: "pending" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded";
   title: string;
   url: string;
 }

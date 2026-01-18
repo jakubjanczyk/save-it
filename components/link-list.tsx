@@ -11,7 +11,7 @@ export interface LinkListItem {
   title: string;
   description: string;
   url: string;
-  status: "pending" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded";
 }
 
 export interface LinkListProps {

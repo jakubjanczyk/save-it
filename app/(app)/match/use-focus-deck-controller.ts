@@ -1,7 +1,7 @@
 "use client";
 
 import type { GenericId } from "convex/values";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { toast } from "sonner";
 
 import type { FocusAction } from "@/components/focus/types";
@@ -35,9 +35,6 @@ export function useFocusDeckController(params: {
     undefined,
     createInitialFocusDeckState
   );
-  const [hiddenIds, setHiddenIds] = useState<Set<GenericId<"links">>>(
-    () => new Set()
-  );
   const didInitRef = useRef(false);
 
   const topItem = state.queue[0] ?? null;
@@ -56,51 +53,18 @@ export function useFocusDeckController(params: {
       return;
     }
 
-    const pendingIds = new Set(params.pendingItems.map((item) => item.id));
-    const filteredHidden = new Set<GenericId<"links">>();
-    for (const id of hiddenIds) {
-      if (pendingIds.has(id)) {
-        filteredHidden.add(id);
-      }
-    }
-
-    if (filteredHidden.size !== hiddenIds.size) {
-      setHiddenIds(filteredHidden);
-    }
-
     dispatch({
-      hiddenIds: Array.from(filteredHidden),
       isInitial: !didInitRef.current,
       items: params.pendingItems,
       requestedLinkId: params.requestedLinkId,
       tag: "syncPending",
     });
     didInitRef.current = true;
-  }, [hiddenIds, params.pendingItems, params.requestedLinkId]);
+  }, [params.pendingItems, params.requestedLinkId]);
 
-  const remainingCount = useMemo(() => {
-    if (!params.pendingItems) {
-      return 0;
-    }
-
-    const pendingIds = new Set(params.pendingItems.map((item) => item.id));
-    let hiddenCount = 0;
-    for (const id of hiddenIds) {
-      if (pendingIds.has(id)) {
-        hiddenCount += 1;
-      }
-    }
-
-    return Math.max(0, params.pendingItems.length - hiddenCount);
-  }, [hiddenIds, params.pendingItems]);
+  const remainingCount = params.pendingItems?.length ?? 0;
 
   const runAction = (action: FocusAction, item: FocusItem) => {
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.add(item.id);
-      return next;
-    });
-
     const promise =
       action === "save"
         ? params.save({ linkId: item.id })
@@ -113,11 +77,6 @@ export function useFocusDeckController(params: {
         );
 
         dispatch({ item, tag: "requeueItem" });
-        setHiddenIds((prev) => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
       })
       .finally(() => undefined);
   };

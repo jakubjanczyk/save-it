@@ -18,7 +18,7 @@ export interface LinkDoc {
   emailId: GenericId<"emails">;
   raindropId?: string;
   savedAt?: number;
-  status: "pending" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded";
   title: string;
   url: string;
 }

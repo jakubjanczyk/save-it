@@ -14,10 +14,24 @@ export interface LinkCardProps {
   title: string;
   description: string;
   url: string;
-  status?: "pending" | "saved" | "discarded";
+  status?: "pending" | "processing" | "saved" | "discarded";
   selected?: boolean;
   onSave: () => Promise<void> | void;
   onDiscard: () => Promise<void> | void;
+}
+
+function getStatusMeta(status: "saved" | "discarded") {
+  if (status === "saved") {
+    return {
+      badgeClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+      label: "Saved",
+    };
+  }
+
+  return {
+    badgeClass: "bg-destructive/15 text-destructive",
+    label: "Discarded",
+  };
 }
 
 export function LinkCard({
@@ -29,23 +43,30 @@ export function LinkCard({
   title,
   url,
 }: LinkCardProps) {
-  if (status !== "pending") {
+  if (status === "saved" || status === "discarded") {
+    const statusMeta = getStatusMeta(status);
+
     return (
       <Card>
         <CardHeader className="gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="leading-snug line-through opacity-70">
+            <CardTitle
+              className={cn(
+                "leading-snug opacity-70",
+                status === "saved" || status === "discarded"
+                  ? "line-through"
+                  : undefined
+              )}
+            >
               {title}
             </CardTitle>
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
-                status === "saved"
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : "bg-destructive/15 text-destructive"
+                statusMeta.badgeClass
               )}
             >
-              {status === "saved" ? "Saved" : "Discarded"}
+              {statusMeta.label}
             </span>
           </div>
         </CardHeader>

@@ -36,7 +36,6 @@ test("syncPending rotates the queue when requestedLinkId is present", () => {
   ];
 
   const state = focusDeckReducer(createInitialFocusDeckState(), {
-    hiddenIds: [],
     isInitial: true,
     items,
     requestedLinkId: "l2" as GenericId<"links">,
@@ -66,7 +65,6 @@ test("startDismiss sets dismissing for the top item", () => {
   ];
 
   const state = focusDeckReducer(createInitialFocusDeckState(), {
-    hiddenIds: [],
     isInitial: true,
     items,
     requestedLinkId: null,
@@ -112,7 +110,6 @@ test("startDismiss removes the top item from the queue", () => {
   ];
 
   const state = focusDeckReducer(createInitialFocusDeckState(), {
-    hiddenIds: [],
     isInitial: true,
     items,
     requestedLinkId: null,
@@ -147,7 +144,6 @@ test("finishDismiss clears dismissing", () => {
   ];
 
   const state = focusDeckReducer(createInitialFocusDeckState(), {
-    hiddenIds: [],
     isInitial: true,
     items,
     requestedLinkId: null,
@@ -181,7 +177,6 @@ test("requeueItem appends when missing", () => {
   ];
 
   const state = focusDeckReducer(createInitialFocusDeckState(), {
-    hiddenIds: [],
     isInitial: true,
     items,
     requestedLinkId: null,

@@ -262,7 +262,12 @@ export const listWithPendingLinks = query({
       const pendingLinks = await ctx.db
         .query("links")
         .withIndex("by_emailId", (q) => q.eq("emailId", email._id))
-        .filter((q) => q.eq(q.field("status"), "pending"))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("status"), "pending"),
+            q.eq(q.field("status"), "processing")
+          )
+        )
         .collect();
 
       const pendingLinkCount = pendingLinks.length;
@@ -316,7 +321,12 @@ export const discardPendingLinks = internalMutation({
     const pendingLinks = await ctx.db
       .query("links")
       .withIndex("by_emailId", (q) => q.eq("emailId", args.emailId))
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "processing")
+        )
+      )
       .collect();
 
     for (const link of pendingLinks) {

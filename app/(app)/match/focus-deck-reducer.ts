@@ -13,7 +13,6 @@ export type FocusDeckEvent =
   | { tag: "finishDismiss" }
   | {
       tag: "syncPending";
-      hiddenIds: GenericId<"links">[];
       isInitial: boolean;
       items: FocusItem[];
       requestedLinkId: GenericId<"links"> | null;
@@ -62,15 +61,12 @@ export function focusDeckReducer(
   event: FocusDeckEvent
 ): FocusDeckState {
   if (event.tag === "syncPending") {
-    const hidden = new Set(event.hiddenIds);
     const pendingIds = new Set(event.items.map((item) => item.id));
-    const queue = state.queue.filter(
-      (item) => pendingIds.has(item.id) && !hidden.has(item.id)
-    );
+    const queue = state.queue.filter((item) => pendingIds.has(item.id));
     const queueIds = new Set(queue.map((item) => item.id));
 
     for (const item of event.items) {
-      if (hidden.has(item.id) || queueIds.has(item.id)) {
+      if (queueIds.has(item.id)) {
         continue;
       }
 
