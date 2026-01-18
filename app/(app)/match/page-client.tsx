@@ -1,36 +1,35 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 
-import { discardLink, saveLink } from "../home-convex-refs";
+import { discardLink, listPendingFocus, saveLink } from "../home-convex-refs";
 
 import { FocusDeck } from "./focus-deck";
 import { FocusEmptyCard } from "./focus-empty-card";
-import type { FocusItem } from "./focus-item";
+import { FocusLoadingCard } from "./focus-loading-card";
 import { getActiveLinkId } from "./focus-queue";
 import { FocusShortcuts } from "./focus-shortcuts";
 import { useFocusDeckController } from "./use-focus-deck-controller";
 
-export function FocusClient(props: {
-  items: FocusItem[];
-  remainingCount: number;
-  requestedLinkId: string | null;
-}) {
+export function FocusClient(props: { requestedLinkId: string | null }) {
   const requestedLinkId = getActiveLinkId(props.requestedLinkId);
-  const items: FocusItem[] = props.items;
   const discard = useAction(discardLink);
   const save = useAction(saveLink);
+  const pendingItems = useQuery(listPendingFocus, {});
 
   const controller = useFocusDeckController({
     discard,
-    initialItems: items,
-    initialRemainingCount: props.remainingCount,
+    pendingItems,
     requestedLinkId,
     save,
   });
 
   const activeItem =
     controller.state.dismissing?.item ?? controller.state.shownItem;
+
+  if (!pendingItems) {
+    return <FocusLoadingCard />;
+  }
 
   if (!activeItem) {
     return <FocusEmptyCard />;

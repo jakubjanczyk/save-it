@@ -6,18 +6,16 @@ import type { FocusItem } from "./focus-item";
 
 export interface FocusDeckState {
   dismissing: { action: FocusAction; item: FocusItem; startX: number } | null;
-  processedCount: number;
   queue: FocusItem[];
-  remainingCount: number;
 }
 
 export type FocusDeckEvent =
-  | { tag: "appendItems"; items: FocusItem[] }
   | { tag: "finishDismiss" }
   | {
-      tag: "init";
+      tag: "syncPending";
+      hiddenIds: GenericId<"links">[];
+      isInitial: boolean;
       items: FocusItem[];
-      remainingCount: number;
       requestedLinkId: GenericId<"links"> | null;
     }
   | { tag: "requeueItem"; item: FocusItem }
@@ -56,30 +54,38 @@ function appendUniqueById(queue: FocusItem[], items: FocusItem[]) {
 }
 
 export function createInitialFocusDeckState(): FocusDeckState {
-  return { dismissing: null, processedCount: 0, queue: [], remainingCount: 0 };
+  return { dismissing: null, queue: [] };
 }
 
 export function focusDeckReducer(
   state: FocusDeckState,
   event: FocusDeckEvent
 ): FocusDeckState {
-  if (event.tag === "init") {
-    const queue = event.requestedLinkId
-      ? rotateQueueToId(event.items, event.requestedLinkId)
-      : event.items;
+  if (event.tag === "syncPending") {
+    const hidden = new Set(event.hiddenIds);
+    const pendingIds = new Set(event.items.map((item) => item.id));
+    const queue = state.queue.filter(
+      (item) => pendingIds.has(item.id) && !hidden.has(item.id)
+    );
+    const queueIds = new Set(queue.map((item) => item.id));
 
-    return {
-      dismissing: null,
-      processedCount: 0,
-      queue,
-      remainingCount: event.remainingCount,
-    };
-  }
+    for (const item of event.items) {
+      if (hidden.has(item.id) || queueIds.has(item.id)) {
+        continue;
+      }
 
-  if (event.tag === "appendItems") {
+      queueIds.add(item.id);
+      queue.push(item);
+    }
+
+    const nextQueue =
+      event.isInitial && event.requestedLinkId
+        ? rotateQueueToId(queue, event.requestedLinkId)
+        : queue;
+
     return {
       ...state,
-      queue: appendUniqueById(state.queue, event.items),
+      queue: nextQueue,
     };
   }
 
@@ -92,9 +98,7 @@ export function focusDeckReducer(
     return {
       ...state,
       dismissing: { action: event.action, item: top, startX: event.startX },
-      processedCount: state.processedCount + 1,
       queue: state.queue.slice(1),
-      remainingCount: Math.max(0, state.remainingCount - 1),
     };
   }
 
@@ -105,21 +109,16 @@ export function focusDeckReducer(
 
     return {
       dismissing: null,
-      processedCount: state.processedCount,
       queue: state.queue,
-      remainingCount: state.remainingCount,
     };
   }
 
   if (event.tag === "requeueItem") {
-    const beforeLength = state.queue.length;
     const queue = appendUniqueById(state.queue, [event.item]);
-    const didAdd = queue.length !== beforeLength;
 
     return {
       ...state,
       queue,
-      remainingCount: didAdd ? state.remainingCount + 1 : state.remainingCount,
     };
   }
 

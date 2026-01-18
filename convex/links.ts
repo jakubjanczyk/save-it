@@ -294,7 +294,7 @@ async function listPendingFocusBatchImpl(
     });
   }
 
-  items.sort((a, b) => b.email.receivedAt - a.email.receivedAt);
+  items.sort((a, b) => a.email.receivedAt - b.email.receivedAt);
   return items.slice(0, Math.max(0, args.limit));
 }
 

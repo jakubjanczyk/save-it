@@ -1,24 +1,16 @@
 "use client";
 
-import { useConvex } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { FocusAction } from "@/components/focus/types";
 
-import { listPendingFocusBatch } from "../home-convex-refs";
-
 import {
   createInitialFocusDeckState,
   focusDeckReducer,
 } from "./focus-deck-reducer";
 import type { FocusItem } from "./focus-item";
-
-const INITIAL_BATCH_SIZE = 10;
-const PREFETCH_BATCH_SIZE = 10;
-const PREFETCH_THRESHOLD = 6;
-const PREFETCH_COOLDOWN_MS = 5000;
 
 function setFocusUrl(linkId: GenericId<"links"> | null) {
   if (typeof window === "undefined") {
@@ -33,82 +25,77 @@ function setFocusUrl(linkId: GenericId<"links"> | null) {
 }
 
 export function useFocusDeckController(params: {
-  initialItems: FocusItem[];
-  initialRemainingCount: number;
+  pendingItems: FocusItem[] | undefined;
   requestedLinkId: GenericId<"links"> | null;
   discard: (args: { linkId: GenericId<"links"> }) => Promise<unknown>;
   save: (args: { linkId: GenericId<"links"> }) => Promise<unknown>;
 }) {
-  const convex = useConvex();
-
-  const [state, dispatch] = useReducer(focusDeckReducer, undefined, () => {
-    const items = params.initialItems.slice(0, INITIAL_BATCH_SIZE);
-    return focusDeckReducer(createInitialFocusDeckState(), {
-      items,
-      remainingCount: params.initialRemainingCount,
-      requestedLinkId: params.requestedLinkId,
-      tag: "init",
-    });
-  });
-
-  const [prefetching, setPrefetching] = useState(false);
-  const [inFlightIds, setInFlightIds] = useState<Set<GenericId<"links">>>(
+  const [state, dispatch] = useReducer(
+    focusDeckReducer,
+    undefined,
+    createInitialFocusDeckState
+  );
+  const [hiddenIds, setHiddenIds] = useState<Set<GenericId<"links">>>(
     () => new Set()
   );
+  const didInitRef = useRef(false);
 
   const topItem = state.queue[0] ?? null;
   const peekItem = state.queue[1] ?? null;
 
   useEffect(() => {
+    if (!(topItem || didInitRef.current)) {
+      return;
+    }
+
     setFocusUrl(topItem?.id ?? null);
-  }, [topItem?.id]);
-
-  const excludeIds = useMemo(() => {
-    const exclude = new Set<GenericId<"links">>();
-
-    for (const item of state.queue) {
-      exclude.add(item.id);
-    }
-
-    for (const id of inFlightIds) {
-      exclude.add(id);
-    }
-
-    return Array.from(exclude);
-  }, [inFlightIds, state.queue]);
-
-  const prefetchCooldownUntilRef = useRef(0);
+  }, [topItem]);
 
   useEffect(() => {
-    if (prefetching) {
+    if (!params.pendingItems) {
       return;
     }
 
-    if (Date.now() < prefetchCooldownUntilRef.current) {
-      return;
+    const pendingIds = new Set(params.pendingItems.map((item) => item.id));
+    const filteredHidden = new Set<GenericId<"links">>();
+    for (const id of hiddenIds) {
+      if (pendingIds.has(id)) {
+        filteredHidden.add(id);
+      }
     }
 
-    if (state.queue.length >= PREFETCH_THRESHOLD) {
-      return;
+    if (filteredHidden.size !== hiddenIds.size) {
+      setHiddenIds(filteredHidden);
     }
 
-    setPrefetching(true);
-    convex
-      .query(listPendingFocusBatch, { excludeIds, limit: PREFETCH_BATCH_SIZE })
-      .then((items) => {
-        if (items.length === 0) {
-          prefetchCooldownUntilRef.current = Date.now() + PREFETCH_COOLDOWN_MS;
-        }
-        dispatch({ items, tag: "appendItems" });
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        setPrefetching(false);
-      });
-  }, [convex, excludeIds, prefetching, state.queue.length]);
+    dispatch({
+      hiddenIds: Array.from(filteredHidden),
+      isInitial: !didInitRef.current,
+      items: params.pendingItems,
+      requestedLinkId: params.requestedLinkId,
+      tag: "syncPending",
+    });
+    didInitRef.current = true;
+  }, [hiddenIds, params.pendingItems, params.requestedLinkId]);
+
+  const remainingCount = useMemo(() => {
+    if (!params.pendingItems) {
+      return 0;
+    }
+
+    const pendingIds = new Set(params.pendingItems.map((item) => item.id));
+    let hiddenCount = 0;
+    for (const id of hiddenIds) {
+      if (pendingIds.has(id)) {
+        hiddenCount += 1;
+      }
+    }
+
+    return Math.max(0, params.pendingItems.length - hiddenCount);
+  }, [hiddenIds, params.pendingItems]);
 
   const runAction = (action: FocusAction, item: FocusItem) => {
-    setInFlightIds((prev) => {
+    setHiddenIds((prev) => {
       const next = new Set(prev);
       next.add(item.id);
       return next;
@@ -126,14 +113,13 @@ export function useFocusDeckController(params: {
         );
 
         dispatch({ item, tag: "requeueItem" });
-      })
-      .finally(() => {
-        setInFlightIds((prev) => {
+        setHiddenIds((prev) => {
           const next = new Set(prev);
           next.delete(item.id);
           return next;
         });
-      });
+      })
+      .finally(() => undefined);
   };
 
   const requestDismiss = (action: FocusAction, startX = 0) => {
@@ -172,7 +158,7 @@ export function useFocusDeckController(params: {
     state: {
       dismissing: state.dismissing,
       peekItem,
-      remainingCount: state.remainingCount,
+      remainingCount,
       shownItem: topItem,
     },
   };

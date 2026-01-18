@@ -5,22 +5,16 @@ import { InboxFetchEmailsCard } from "./inbox-fetch-emails-card";
 
 const useQueryMock = vi.fn();
 const useActionMock = vi.fn();
-const refreshMock = vi.fn();
 
 vi.mock("convex/react", () => ({
   useAction: (...args: unknown[]) => useActionMock(...args),
   useQuery: (...args: unknown[]) => useQueryMock(...args),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: refreshMock }),
-}));
-
 afterEach(() => {
   cleanup();
   useQueryMock.mockReset();
   useActionMock.mockReset();
-  refreshMock.mockReset();
 });
 
 test("disables fetch button when a sync is running", () => {

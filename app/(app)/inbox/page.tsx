@@ -1,18 +1,12 @@
-import { fetchQuery } from "convex/nextjs";
-
-import { EmailList } from "@/components/email-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireEnv } from "@/lib/require-env";
 
-import { listWithPendingLinks } from "../home-convex-refs";
 import { InboxFetchEmailsCard } from "../inbox-fetch-emails-card";
+
+import { InboxListClient } from "./list-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function InboxPage() {
-  const convexUrl = requireEnv("NEXT_PUBLIC_CONVEX_URL");
-  const emails = await fetchQuery(listWithPendingLinks, {}, { url: convexUrl });
-
+export default function InboxPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
       <div>
@@ -30,16 +24,7 @@ export default async function InboxPage() {
             <CardTitle>Inbox</CardTitle>
           </CardHeader>
           <CardContent>
-            <EmailList
-              emails={emails.map((email) => ({
-                extractionError: email.extractionError,
-                from: email.from,
-                id: email._id,
-                pendingLinkCount: email.pendingLinkCount,
-                receivedAt: email.receivedAt,
-                subject: email.subject,
-              }))}
-            />
+            <InboxListClient />
           </CardContent>
         </Card>
       </div>

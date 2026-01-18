@@ -412,6 +412,68 @@ test("listPendingFocus excludes emails that are already marked as read", async (
   expect(result[0]?.email.id).toBe(activeEmailId);
 });
 
+test("listPendingFocus orders items oldest first", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const olderEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g-old",
+      markedAsRead: false,
+      receivedAt: Date.now() - 10_000,
+      senderId,
+      subject: "Older",
+    })
+  );
+
+  const newerEmailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g-new",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Newer",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Old link",
+      emailId: olderEmailId,
+      status: "pending",
+      title: "Old title",
+      url: "https://example.com/old",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "New link",
+      emailId: newerEmailId,
+      status: "pending",
+      title: "New title",
+      url: "https://example.com/new",
+    })
+  );
+
+  const result = await t.query(listPendingFocus, {});
+
+  expect(result.map((item) => item.email.id)).toEqual([
+    olderEmailId,
+    newerEmailId,
+  ]);
+});
+
 test("listPendingFocusBatch respects limit", async () => {
   const t = convexTest(schema, modules);
 
