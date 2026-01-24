@@ -4,7 +4,10 @@ import type { GenericId } from "convex/values";
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
 
-import { EMAIL_FINALIZE_ACTION_SETTING_KEY } from "../lib/settings-keys";
+import {
+  EMAIL_FINALIZE_ACTION_SETTING_KEY,
+  RAINDROP_SYNC_ENABLED_SETTING_KEY,
+} from "../lib/settings-keys";
 
 import schema from "./schema";
 
@@ -14,7 +17,7 @@ interface LinkListItem {
   _id: GenericId<"links">;
   description: string;
   emailId: GenericId<"emails">;
-  status: "pending" | "processing" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded" | "archived";
   title: string;
   url: string;
 }
@@ -60,6 +63,35 @@ const save: FunctionReference<
   { linkId: GenericId<"links"> },
   { raindropId: string | null }
 > = makeFunctionReference("links:save");
+
+const listSaved: FunctionReference<
+  "query",
+  "public",
+  { cursor?: string; limit: number; sortOrder: "oldest" | "newest" },
+  {
+    continueCursor: string;
+    isDone: boolean;
+    items: Array<{
+      id: GenericId<"links">;
+      isFavorite: boolean;
+      savedAt?: number;
+    }>;
+  }
+> = makeFunctionReference("links:listSaved");
+
+const archive: FunctionReference<
+  "action",
+  "public",
+  { linkId: GenericId<"links"> },
+  null
+> = makeFunctionReference("links:archive");
+
+const toggleFavoriteAction: FunctionReference<
+  "action",
+  "public",
+  { linkId: GenericId<"links"> },
+  { isFavorite: boolean }
+> = makeFunctionReference("links:toggleFavoriteAction");
 
 function withMockFetch(impl: typeof fetch) {
   const original = globalThis.fetch;
@@ -899,4 +931,337 @@ test("discard archives email when setting prefers archive and it discards the la
   } finally {
     restoreFetch();
   }
+});
+
+test("listSaved returns only saved links", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now() - 1000,
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Pending Link",
+      url: "https://example.com/pending",
+    })
+  );
+
+  const result = await t.query(listSaved, { limit: 10, sortOrder: "oldest" });
+
+  expect(result.items).toHaveLength(1);
+  expect(result.items[0]?.savedAt).toBeDefined();
+});
+
+test("listSaved respects sort order", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const olderLinkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now() - 10_000,
+      status: "saved",
+      title: "Older Link",
+      url: "https://example.com/older",
+    })
+  );
+
+  const newerLinkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Newer Link",
+      url: "https://example.com/newer",
+    })
+  );
+
+  const oldestFirst = await t.query(listSaved, {
+    limit: 10,
+    sortOrder: "oldest",
+  });
+  expect(oldestFirst.items[0]?.id).toBe(olderLinkId);
+  expect(oldestFirst.items[1]?.id).toBe(newerLinkId);
+
+  const newestFirst = await t.query(listSaved, {
+    limit: 10,
+    sortOrder: "newest",
+  });
+  expect(newestFirst.items[0]?.id).toBe(newerLinkId);
+  expect(newestFirst.items[1]?.id).toBe(olderLinkId);
+});
+
+test("archive sets status to archived", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.action(archive, { linkId });
+
+  const link = await t.run((ctx) => ctx.db.get(linkId));
+  expect(link?.status).toBe("archived");
+  expect(link?.archivedAt).toBeDefined();
+});
+
+test("archive calls Raindrop DELETE when raindropId exists and sync enabled", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      raindropId: "123",
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("oauthTokens", {
+      accessToken: "raindrop-access",
+      type: "raindrop",
+    })
+  );
+
+  let deleteCalled = false;
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+    if (url.pathname === "/rest/v1/raindrop/123") {
+      deleteCalled = true;
+      return Promise.resolve(
+        new Response(JSON.stringify({ result: true }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        })
+      );
+    }
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await t.action(archive, { linkId });
+    expect(deleteCalled).toBe(true);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("toggleFavoriteAction toggles isFavorite field", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      isFavorite: false,
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  const result1 = await t.action(toggleFavoriteAction, { linkId });
+  expect(result1.isFavorite).toBe(true);
+
+  const link1 = await t.run((ctx) => ctx.db.get(linkId));
+  expect(link1?.isFavorite).toBe(true);
+
+  const result2 = await t.action(toggleFavoriteAction, { linkId });
+  expect(result2.isFavorite).toBe(false);
+
+  const link2 = await t.run((ctx) => ctx.db.get(linkId));
+  expect(link2?.isFavorite).toBe(false);
+});
+
+test("save skips Raindrop when sync disabled", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc 2",
+      emailId,
+      status: "pending",
+      title: "Title 2",
+      url: "https://example.com/b",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      createdAt: Date.now(),
+      key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+      updatedAt: Date.now(),
+      value: "false",
+    })
+  );
+
+  let raindropCalled = false;
+  const restoreFetch = withMockFetch(() => {
+    raindropCalled = true;
+    return Promise.resolve(
+      new Response(JSON.stringify({ item: { _id: 777 } }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      })
+    );
+  });
+
+  try {
+    const result = await t.action(save, { linkId });
+    expect(result.raindropId).toBe(null);
+    expect(raindropCalled).toBe(false);
+  } finally {
+    restoreFetch();
+  }
+
+  const link = await t.run((ctx) => ctx.db.get(linkId));
+  expect(link?.status).toBe("saved");
+  expect(link?.raindropId).toBeUndefined();
 });

@@ -49,3 +49,26 @@ test("uses Raindrop connect URL", () => {
     "/api/auth/raindrop"
   );
 });
+
+test("shows reconnect when Gmail has a connection error", () => {
+  useMutationMock.mockReturnValue(() => null);
+
+  const rendered = render(
+    <ConnectionsCard
+      gmailConnected
+      gmailErrorMessage="Connection expired. Reconnect to continue."
+      raindropConnected={false}
+    />
+  );
+  const row = rendered.container.querySelector(
+    "[data-service='gmail']"
+  ) as HTMLElement;
+
+  expect(
+    within(row).getByText("Connection expired. Reconnect to continue.")
+  ).toBeInTheDocument();
+  expect(within(row).getByRole("link", { name: "Reconnect" })).toHaveAttribute(
+    "href",
+    "/api/auth/google"
+  );
+});

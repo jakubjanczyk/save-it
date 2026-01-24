@@ -50,6 +50,13 @@ export class RaindropSaveFailed extends Data.TaggedError("RaindropSaveFailed")<{
   message: string;
 }> {}
 
+export class RaindropDeleteFailed extends Data.TaggedError(
+  "RaindropDeleteFailed"
+)<{
+  raindropId: string;
+  message: string;
+}> {}
+
 // Link extraction errors
 export class ExtractionLLMError extends Data.TaggedError("ExtractionLLMError")<{
   message: string;

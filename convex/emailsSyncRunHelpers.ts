@@ -3,7 +3,7 @@ import { Cause, Chunk, Effect, Exit, pipe, Ref } from "effect";
 
 import { summarizeError } from "../lib/logging/error-summary";
 
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { ActionCtx } from "./_generated/server";
 
 export interface SyncProgress {
@@ -11,6 +11,12 @@ export interface SyncProgress {
   insertedEmails: number;
   processedEmails: number;
   storedLinks: number;
+}
+
+interface ErrorFields {
+  errorMessage?: string;
+  errorName?: string;
+  errorTag?: string;
 }
 
 interface SyncStartResult {
@@ -48,7 +54,7 @@ export function startSyncRun(ctx: ActionCtx) {
   );
 }
 
-function errorFieldsFromExit(exit: Exit.Exit<unknown, unknown>) {
+function errorFieldsFromExit(exit: Exit.Exit<unknown, unknown>): ErrorFields {
   if (!Exit.isFailure(exit)) {
     return {};
   }
@@ -70,13 +76,32 @@ export function finishSyncRun(
     Effect.flatMap((progress) => {
       const status = Exit.isSuccess(exit) ? "success" : "error";
       const errorFields = errorFieldsFromExit(exit);
+      const connectionErrorTag =
+        errorFields.errorTag ?? errorFields.errorName ?? null;
+      const shouldSetConnectionError =
+        connectionErrorTag === "GmailTokenExpired" ||
+        connectionErrorTag === "GmailTokenRefreshFailed";
 
-      return fromPromise(() =>
-        ctx.runMutation(internal.syncruns.finish, {
-          ...errorFields,
-          progress,
-          runId,
-          status,
+      return pipe(
+        fromPromise(() =>
+          ctx.runMutation(internal.syncruns.finish, {
+            ...errorFields,
+            progress,
+            runId,
+            status,
+          })
+        ),
+        Effect.flatMap(() => {
+          if (!shouldSetConnectionError) {
+            return Effect.succeed(null);
+          }
+
+          return fromPromise(() =>
+            ctx.runMutation(api.googleauth.setConnectionError, {
+              errorMessage: errorFields.errorMessage,
+              errorTag: connectionErrorTag ?? undefined,
+            })
+          );
         })
       );
     }),

@@ -72,3 +72,24 @@ test("calls onDisconnect when Disconnect is clicked", async () => {
 
   expect(onDisconnect).toHaveBeenCalledOnce();
 });
+
+test("shows status message and Reconnect when statusTone is error", () => {
+  const rendered = render(
+    <OAuthConnection
+      connected={false}
+      connectHref="/api/auth/google"
+      onDisconnect={() => undefined}
+      serviceName="Gmail"
+      statusMessage="Connection expired. Reconnect to continue."
+      statusTone="error"
+    />
+  );
+
+  expect(
+    rendered.getByText("Connection expired. Reconnect to continue.")
+  ).toBeInTheDocument();
+  expect(rendered.getByRole("link", { name: "Reconnect" })).toHaveAttribute(
+    "href",
+    "/api/auth/google"
+  );
+});

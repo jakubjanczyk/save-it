@@ -3,9 +3,18 @@ import type { GenericId } from "convex/values";
 import { v } from "convex/values";
 import { Effect } from "effect";
 
-import { createRaindropBookmark } from "../lib/raindrop";
-import { parseEmailFinalizeAction } from "../lib/settings";
-import { EMAIL_FINALIZE_ACTION_SETTING_KEY } from "../lib/settings-keys";
+import {
+  createRaindropBookmark,
+  deleteRaindropBookmark,
+} from "../lib/raindrop";
+import {
+  parseEmailFinalizeAction,
+  parseRaindropSyncEnabled,
+} from "../lib/settings";
+import {
+  EMAIL_FINALIZE_ACTION_SETTING_KEY,
+  RAINDROP_SYNC_ENABLED_SETTING_KEY,
+} from "../lib/settings-keys";
 
 import {
   type ActionCtx,
@@ -18,11 +27,13 @@ import {
 
 interface LinkDoc {
   _id: GenericId<"links">;
+  archivedAt?: number;
   description: string;
   emailId: GenericId<"emails">;
+  isFavorite?: boolean;
   raindropId?: string;
   savedAt?: number;
-  status: "pending" | "processing" | "saved" | "discarded";
+  status: "pending" | "processing" | "saved" | "discarded" | "archived";
   title: string;
   url: string;
 }
@@ -114,6 +125,24 @@ const getSettingRef: FunctionReference<
   { key: string },
   string | null
 > = makeFunctionReference("settings:get");
+
+const markArchivedRef = makeFunctionReference(
+  "links:markArchived"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links">; archivedAt: number },
+  null
+>;
+
+const markSavedWithoutRaindropRef = makeFunctionReference(
+  "links:markSavedWithoutRaindrop"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links">; savedAt: number },
+  null
+>;
 
 async function finalizeEmailIfDone(
   ctx: ActionCtx,
@@ -264,10 +293,10 @@ export const hasPendingLinksByEmail = internalQuery({
 export const save = action({
   args: { linkId: v.id("links") },
   handler: async (ctx, args) => {
-    const tokens = await ctx.runQuery(getRaindropTokens, {});
-    if (!tokens) {
-      throw new Error("Raindrop not connected");
-    }
+    const storedSyncEnabled = await ctx.runQuery(getSettingRef, {
+      key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+    });
+    const syncEnabled = parseRaindropSyncEnabled(storedSyncEnabled);
 
     const link = await ctx.runQuery(getLinkRef, {
       linkId: args.linkId as GenericId<"links">,
@@ -284,6 +313,28 @@ export const save = action({
     await ctx.runMutation(markProcessingRef, {
       linkId: args.linkId as GenericId<"links">,
     });
+
+    if (!syncEnabled) {
+      try {
+        await ctx.runMutation(markSavedWithoutRaindropRef, {
+          linkId: args.linkId as GenericId<"links">,
+          savedAt: Date.now(),
+        });
+      } catch (error) {
+        await ctx.runMutation(markPendingRef, {
+          linkId: args.linkId as GenericId<"links">,
+        });
+        throw error;
+      }
+
+      await finalizeEmailIfDone(ctx, link.emailId);
+      return { raindropId: null };
+    }
+
+    const tokens = await ctx.runQuery(getRaindropTokens, {});
+    if (!tokens) {
+      throw new Error("Raindrop not connected");
+    }
 
     let raindropId: string;
     try {
@@ -427,5 +478,216 @@ export const listPendingFocusBatch = query({
       excludeIds: args.excludeIds ?? [],
       limit: args.limit,
     });
+  },
+});
+
+export const listSaved = query({
+  args: {
+    cursor: v.optional(v.string()),
+    limit: v.number(),
+    sortOrder: v.union(v.literal("oldest"), v.literal("newest")),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit, 100);
+
+    const paginationOpts = {
+      cursor: args.cursor ?? null,
+      numItems: limit,
+    };
+
+    const result = await ctx.db
+      .query("links")
+      .withIndex("by_status_savedAt", (q) => q.eq("status", "saved"))
+      .order(args.sortOrder === "newest" ? "desc" : "asc")
+      .paginate(paginationOpts);
+
+    const items: Array<{
+      archivedAt?: number;
+      description: string;
+      id: GenericId<"links">;
+      isFavorite: boolean;
+      raindropId?: string;
+      savedAt?: number;
+      title: string;
+      url: string;
+    }> = [];
+
+    for (const link of result.page) {
+      items.push({
+        archivedAt: link.archivedAt,
+        description: link.description,
+        id: link._id,
+        isFavorite: link.isFavorite ?? false,
+        raindropId: link.raindropId,
+        savedAt: link.savedAt,
+        title: link.title,
+        url: link.url,
+      });
+    }
+
+    return {
+      continueCursor: result.continueCursor,
+      isDone: result.isDone,
+      items,
+    };
+  },
+});
+
+export const markArchived = internalMutation({
+  args: { archivedAt: v.number(), linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.linkId, {
+      archivedAt: args.archivedAt,
+      status: "archived",
+    });
+
+    return null;
+  },
+});
+
+export const markSavedWithoutRaindrop = internalMutation({
+  args: { linkId: v.id("links"), savedAt: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.linkId, {
+      savedAt: args.savedAt,
+      status: "saved",
+    });
+
+    return null;
+  },
+});
+
+export const archive = action({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const link = await ctx.runQuery(getLinkRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    if (link.status !== "saved") {
+      return null;
+    }
+
+    await ctx.runMutation(markArchivedRef, {
+      archivedAt: Date.now(),
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    if (link.raindropId) {
+      const storedSyncEnabled = await ctx.runQuery(getSettingRef, {
+        key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+      });
+      const syncEnabled = parseRaindropSyncEnabled(storedSyncEnabled);
+
+      if (syncEnabled) {
+        const tokens = await ctx.runQuery(getRaindropTokens, {});
+        if (tokens) {
+          try {
+            await Effect.runPromise(
+              deleteRaindropBookmark(tokens.accessToken, link.raindropId)
+            );
+          } catch {
+            // Best-effort delete - don't fail the archive operation
+          }
+        }
+      }
+    }
+
+    return null;
+  },
+});
+
+export const toggleFavorite = internalMutation({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    await ctx.db.patch(args.linkId, {
+      isFavorite: !link.isFavorite,
+    });
+
+    return { isFavorite: !link.isFavorite };
+  },
+});
+
+export const toggleFavoriteAction = action({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const toggleFavoriteRef = makeFunctionReference(
+      "links:toggleFavorite"
+    ) as unknown as FunctionReference<
+      "mutation",
+      "internal",
+      { linkId: GenericId<"links"> },
+      { isFavorite: boolean }
+    >;
+
+    return await ctx.runMutation(toggleFavoriteRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+  },
+});
+
+export const sendToRaindrop = action({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const tokens = await ctx.runQuery(getRaindropTokens, {});
+    if (!tokens) {
+      throw new Error("Raindrop not connected");
+    }
+
+    const link = await ctx.runQuery(getLinkRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    if (link.raindropId) {
+      return { raindropId: link.raindropId };
+    }
+
+    const raindropId = await Effect.runPromise(
+      createRaindropBookmark(tokens.accessToken, {
+        description: link.description,
+        title: link.title,
+        url: link.url,
+      })
+    );
+
+    const updateRaindropIdRef = makeFunctionReference(
+      "links:updateRaindropId"
+    ) as unknown as FunctionReference<
+      "mutation",
+      "internal",
+      { linkId: GenericId<"links">; raindropId: string },
+      null
+    >;
+
+    await ctx.runMutation(updateRaindropIdRef, {
+      linkId: args.linkId as GenericId<"links">,
+      raindropId,
+    });
+
+    return { raindropId };
+  },
+});
+
+export const updateRaindropId = internalMutation({
+  args: { linkId: v.id("links"), raindropId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.linkId, {
+      raindropId: args.raindropId,
+    });
+
+    return null;
   },
 });

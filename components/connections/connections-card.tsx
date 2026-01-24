@@ -13,9 +13,11 @@ import { Separator } from "@/components/ui/separator";
 
 export function ConnectionsCard(props: {
   gmailConnected: boolean;
+  gmailErrorMessage?: string | null;
   raindropConnected: boolean;
 }) {
   const router = useRouter();
+  const gmailHasError = Boolean(props.gmailErrorMessage);
 
   const disconnectGoogle = useMutation(clearGoogleTokens);
   const disconnectRaindrop = useMutation(clearRaindropTokens);
@@ -28,13 +30,17 @@ export function ConnectionsCard(props: {
       <CardContent className="grid gap-4">
         <div data-service="gmail">
           <OAuthConnection
-            connected={props.gmailConnected}
+            connected={props.gmailConnected && !gmailHasError}
             connectHref="/api/auth/google"
             onDisconnect={async () => {
               await disconnectGoogle({});
               router.refresh();
             }}
             serviceName="Gmail"
+            statusMessage={
+              gmailHasError ? (props.gmailErrorMessage ?? null) : null
+            }
+            statusTone={gmailHasError ? "error" : "default"}
           />
         </div>
 

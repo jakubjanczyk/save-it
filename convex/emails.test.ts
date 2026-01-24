@@ -47,6 +47,18 @@ const fetchFromGmail: FunctionReference<
   { fetched: number }
 > = makeFunctionReference("emails:fetchFromGmail");
 
+const getConnectionStatus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  {
+    connected: boolean;
+    errorAt: number | null;
+    errorMessage: string | null;
+    errorTag: string | null;
+  }
+> = makeFunctionReference("googleauth:getConnectionStatus");
+
 const listWithPendingLinks: FunctionReference<
   "query",
   "public",
@@ -172,6 +184,39 @@ test("fetchFromGmail returns fetched=1 for a new email", async () => {
   } finally {
     restoreFetch();
   }
+});
+
+test("fetchFromGmail records a connection error when Gmail auth fails", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(addSender, { email: "*@substack.com" });
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+
+    if (url.pathname === "/gmail/v1/users/me/messages") {
+      return Promise.resolve(new Response("Unauthorized", { status: 401 }));
+    }
+
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  try {
+    await expect(t.action(fetchFromGmail, {})).rejects.toThrow();
+  } finally {
+    restoreFetch();
+  }
+
+  const status = await t.query(getConnectionStatus, {});
+
+  expect(status.connected).toBe(true);
+  expect(status.errorTag).toBe("GmailTokenExpired");
+  expect(status.errorAt).not.toBeNull();
 });
 
 test("fetchFromGmail uses configured email fetch limit", async () => {

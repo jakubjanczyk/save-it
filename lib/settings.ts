@@ -70,3 +70,12 @@ export function parseBackgroundSyncTimeZone(value: string | null): string {
 
   return DEFAULT_BACKGROUND_SYNC_TIME_ZONE;
 }
+
+export const DEFAULT_RAINDROP_SYNC_ENABLED = true;
+
+export function parseRaindropSyncEnabled(value: string | null): boolean {
+  if (value === null) {
+    return DEFAULT_RAINDROP_SYNC_ENABLED;
+  }
+  return value === "true";
+}

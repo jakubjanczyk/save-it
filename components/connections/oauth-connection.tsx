@@ -10,6 +10,8 @@ export interface OAuthConnectionProps {
   connectHref: string;
   disabled?: boolean;
   onDisconnect: () => Promise<void> | void;
+  statusMessage?: string | null;
+  statusTone?: "default" | "error";
 }
 
 export function OAuthConnection({
@@ -18,14 +20,20 @@ export function OAuthConnection({
   connectHref,
   disabled,
   onDisconnect,
+  statusMessage,
+  statusTone = "default",
 }: OAuthConnectionProps) {
+  const statusText =
+    statusMessage ?? (connected ? "Connected" : "Not connected");
+  const statusClass =
+    statusTone === "error" ? "text-destructive" : "text-muted-foreground";
+  const connectLabel = statusTone === "error" ? "Reconnect" : "Connect";
+
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="font-medium">{serviceName}</div>
-        <div className="text-muted-foreground text-sm">
-          {connected ? "Connected" : "Not connected"}
-        </div>
+        <div className={`${statusClass} text-sm`}>{statusText}</div>
       </div>
 
       {connected ? (
@@ -40,7 +48,7 @@ export function OAuthConnection({
         </Button>
       ) : (
         <Button asChild disabled={disabled}>
-          <Link href={connectHref}>Connect</Link>
+          <Link href={connectHref}>{connectLabel}</Link>
         </Button>
       )}
     </div>

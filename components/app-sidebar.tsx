@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookmarkIcon,
   HistoryIcon,
   HomeIcon,
   LogsIcon,
@@ -28,6 +29,11 @@ const items = [
     title: "Match",
     href: "/",
     icon: TargetIcon,
+  },
+  {
+    title: "Browse",
+    href: "/browse",
+    icon: BookmarkIcon,
   },
   {
     title: "Inbox",
@@ -61,6 +67,10 @@ function isNavItemActive(pathname: string, href: string) {
     return pathname === "/" || pathname.startsWith("/match");
   }
 
+  if (href === "/browse") {
+    return pathname === "/browse";
+  }
+
   if (href === "/inbox") {
     return pathname === "/inbox" || pathname.startsWith("/emails");
   }
@@ -73,7 +83,10 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
 
   const visibleItems = isMobile
-    ? items.filter((item) => item.href !== "/" && item.href !== "/inbox")
+    ? items.filter(
+        (item) =>
+          item.href !== "/" && item.href !== "/inbox" && item.href !== "/browse"
+      )
     : items;
 
   return (

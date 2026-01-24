@@ -53,9 +53,10 @@ export function FetchEmailsCard(props: {
                 error: summarizeError(error),
               });
               setIsStarting(false);
-              setErrorMessage(
-                error instanceof Error ? error.message : "Fetch failed"
-              );
+              const message =
+                error instanceof Error ? error.message : "Fetch failed";
+              setErrorMessage(message);
+              toast.error(message);
               return;
             }
 
@@ -64,9 +65,10 @@ export function FetchEmailsCard(props: {
                 toast.success("Sync started.");
               })
               .catch((error: unknown) => {
-                setErrorMessage(
-                  error instanceof Error ? error.message : "Fetch failed"
-                );
+                const message =
+                  error instanceof Error ? error.message : "Fetch failed";
+                setErrorMessage(message);
+                toast.error(message);
               })
               .finally(() => {
                 setIsStarting(false);

@@ -7,3 +7,5 @@ export const BACKGROUND_SYNC_LOCAL_HOUR_SETTING_KEY =
   "backgroundSyncLocalHour" as const;
 export const BACKGROUND_SYNC_TIME_ZONE_SETTING_KEY =
   "backgroundSyncTimeZone" as const;
+
+export const RAINDROP_SYNC_ENABLED_SETTING_KEY = "raindropSyncEnabled" as const;

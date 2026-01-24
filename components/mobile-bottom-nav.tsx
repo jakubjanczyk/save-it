@@ -1,6 +1,6 @@
 "use client";
 
-import { HomeIcon, MenuIcon, TargetIcon } from "lucide-react";
+import { BookmarkIcon, HomeIcon, MenuIcon, TargetIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -16,6 +16,10 @@ function isNavItemActive(pathname: string, href: string) {
     return pathname === "/inbox" || pathname.startsWith("/emails");
   }
 
+  if (href === "/browse") {
+    return pathname === "/browse";
+  }
+
   return pathname === href;
 }
 
@@ -24,6 +28,11 @@ const primaryItems = [
     title: "Match",
     href: "/",
     icon: TargetIcon,
+  },
+  {
+    title: "Browse",
+    href: "/browse",
+    icon: BookmarkIcon,
   },
   {
     title: "Inbox",
@@ -45,7 +54,7 @@ export function MobileBottomNav() {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
     >
-      <div className="grid grid-cols-3 gap-1 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+      <div className="grid grid-cols-4 gap-1 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
         {primaryItems.map((item) => {
           const isActive = isNavItemActive(pathname, item.href);
           return (

@@ -5,6 +5,7 @@ import {
   archive as archiveGmail,
   markAsRead as markGmailAsRead,
 } from "../lib/gmail";
+import { summarizeError } from "../lib/logging/error-summary";
 import {
   parseBackgroundSyncEnabled,
   parseBackgroundSyncLocalHour,
@@ -17,6 +18,7 @@ import {
 } from "../lib/settings-keys";
 import { api, internal } from "./_generated/api";
 import {
+  type ActionCtx,
   action,
   internalAction,
   internalMutation,
@@ -29,6 +31,39 @@ import {
   type RetrySyncEmailResult,
   retrySyncEmailProgram,
 } from "./emailsProcessingHelpers";
+
+function getGmailConnectionError(error: unknown) {
+  const summary = summarizeError(error);
+  const tag = typeof summary.tag === "string" ? summary.tag : null;
+
+  if (tag === "GmailTokenExpired" || tag === "GmailTokenRefreshFailed") {
+    const message =
+      typeof summary.message === "string" && summary.message.length > 0
+        ? summary.message
+        : "Gmail connection expired";
+    return { errorMessage: message, errorTag: tag };
+  }
+
+  return null;
+}
+
+async function setGmailConnectionError(ctx: ActionCtx, error: unknown) {
+  const fields = getGmailConnectionError(error);
+  if (!fields) {
+    return;
+  }
+
+  await ctx.runMutation(api.googleauth.setConnectionError, fields);
+}
+
+async function runFetchFromGmail(ctx: ActionCtx) {
+  try {
+    return await Effect.runPromise(fetchFromGmailProgram(ctx));
+  } catch (error) {
+    await setGmailConnectionError(ctx, error);
+    throw error;
+  }
+}
 
 function hourInTimeZone(now: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -43,14 +78,12 @@ function hourInTimeZone(now: Date, timeZone: string) {
 
 export const fetchFromGmail = action({
   args: {},
-  handler: (ctx): Promise<{ fetched: number }> =>
-    Effect.runPromise(fetchFromGmailProgram(ctx)),
+  handler: (ctx): Promise<{ fetched: number }> => runFetchFromGmail(ctx),
 });
 
 export const fetchFromGmailInternal = internalAction({
   args: {},
-  handler: (ctx): Promise<{ fetched: number }> =>
-    Effect.runPromise(fetchFromGmailProgram(ctx)),
+  handler: (ctx): Promise<{ fetched: number }> => runFetchFromGmail(ctx),
 });
 
 export const backgroundSyncTick = internalAction({
@@ -82,7 +115,7 @@ export const backgroundSyncTick = internalAction({
     }
 
     try {
-      const result = await Effect.runPromise(fetchFromGmailProgram(ctx));
+      const result = await runFetchFromGmail(ctx);
       return {
         fetched: result.fetched,
         tag: "ran" as const,
@@ -112,6 +145,15 @@ export const backgroundSyncTick = internalAction({
         };
       }
 
+      if (getGmailConnectionError(error)) {
+        return {
+          tag: "gmailConnectionError" as const,
+          localHour,
+          nowLocalHour,
+          timeZone,
+        };
+      }
+
       throw error;
     }
   },
@@ -120,6 +162,16 @@ export const backgroundSyncTick = internalAction({
 export const startFetchFromGmail = action({
   args: {},
   handler: async (ctx) => {
+    const status = await ctx.runQuery(api.googleauth.getConnectionStatus, {});
+    if (!status.connected) {
+      throw new Error("Gmail not connected");
+    }
+
+    if (status.errorMessage || status.errorTag) {
+      const suffix = status.errorMessage ? ` (${status.errorMessage})` : "";
+      throw new Error(`Gmail connection needs reconnect${suffix}.`);
+    }
+
     await ctx.scheduler.runAfter(0, internal.emails.fetchFromGmailInternal, {});
     return null;
   },

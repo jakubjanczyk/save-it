@@ -37,22 +37,29 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("processing"),
       v.literal("saved"),
-      v.literal("discarded")
+      v.literal("discarded"),
+      v.literal("archived")
     ),
     savedAt: v.optional(v.number()),
     raindropId: v.optional(v.string()),
+    isFavorite: v.optional(v.boolean()),
+    archivedAt: v.optional(v.number()),
   })
     .index("by_emailId", ["emailId"])
     .index("by_emailId_url", ["emailId", "url"])
     .index("by_title", ["title"])
     .index("by_url", ["url"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_savedAt", ["status", "savedAt"]),
 
   oauthTokens: defineTable({
     type: v.string(),
     accessToken: v.string(),
     refreshToken: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    errorTag: v.optional(v.string()),
+    errorAt: v.optional(v.number()),
   }).index("by_type", ["type"]),
 
   syncRuns: defineTable({

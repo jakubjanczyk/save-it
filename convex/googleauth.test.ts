@@ -41,6 +41,27 @@ const clearTokens: FunctionReference<
   null
 > = makeFunctionReference("googleauth:clearTokens");
 
+interface ConnectionStatus extends Record<string, unknown> {
+  connected: boolean;
+  errorAt: number | null;
+  errorMessage: string | null;
+  errorTag: string | null;
+}
+
+const getConnectionStatus: FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  ConnectionStatus
+> = makeFunctionReference("googleauth:getConnectionStatus");
+
+const setConnectionError: FunctionReference<
+  "mutation",
+  "public",
+  { errorMessage?: string; errorTag?: string },
+  string | null
+> = makeFunctionReference("googleauth:setConnectionError");
+
 const isTokenExpired: FunctionReference<
   "query",
   "public",
@@ -122,6 +143,68 @@ test("clearTokens removes stored tokens", async () => {
   const result = await t.query(getTokens, {});
 
   expect(result).toBeNull();
+});
+
+test("getConnectionStatus reports disconnected without errors by default", async () => {
+  const t = convexTest(schema, modules);
+
+  const result = await t.query(getConnectionStatus, {});
+
+  expect(result).toEqual({
+    connected: false,
+    errorAt: null,
+    errorMessage: null,
+    errorTag: null,
+  });
+});
+
+test("setConnectionError stores error details", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  await t.mutation(setConnectionError, {
+    errorMessage: "Access token expired",
+    errorTag: "GmailTokenExpired",
+  });
+
+  const result = await t.query(getConnectionStatus, {});
+
+  expect(result.connected).toBe(true);
+  expect(result.errorMessage).toBe("Access token expired");
+  expect(result.errorTag).toBe("GmailTokenExpired");
+  expect(typeof result.errorAt).toBe("number");
+});
+
+test("saveTokens clears connection error", async () => {
+  const t = convexTest(schema, modules);
+
+  await t.mutation(saveTokens, {
+    accessToken: "access",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh",
+  });
+
+  await t.mutation(setConnectionError, {
+    errorMessage: "Access token expired",
+    errorTag: "GmailTokenExpired",
+  });
+
+  await t.mutation(saveTokens, {
+    accessToken: "access-2",
+    expiresAt: Date.now() + 60_000,
+    refreshToken: "refresh-2",
+  });
+
+  const result = await t.query(getConnectionStatus, {});
+
+  expect(result.errorMessage).toBeNull();
+  expect(result.errorTag).toBeNull();
+  expect(result.errorAt).toBeNull();
 });
 
 test("isTokenExpired returns true when no tokens are stored", async () => {

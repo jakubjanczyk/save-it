@@ -2,6 +2,7 @@ import { type Duration, Effect, pipe, Schedule } from "effect";
 
 import {
   RaindropAuthError,
+  RaindropDeleteFailed,
   RaindropNetworkError,
   RaindropRateLimited,
   RaindropSaveFailed,
@@ -12,6 +13,7 @@ import { isRecord } from "./type-guards/is-record";
 
 export type RaindropError =
   | RaindropAuthError
+  | RaindropDeleteFailed
   | RaindropNetworkError
   | RaindropRateLimited
   | RaindropSaveFailed;
@@ -180,6 +182,58 @@ export function createRaindropBookmark(
       return id;
     },
     catch: (error) => mapRaindropError(error, input.url),
+  });
+
+  return pipe(request, Effect.retry(retrySchedule));
+}
+
+export function mapRaindropDeleteError(error: unknown, raindropId: string) {
+  const httpError = parseHttpError(error);
+
+  if (!httpError) {
+    return new RaindropNetworkError({
+      cause: error,
+      message: "Raindrop delete request failed",
+    });
+  }
+
+  if (httpError.status === 401 || httpError.status === 403) {
+    return new RaindropAuthError({
+      message: httpError.body ?? "Raindrop authorization failed",
+    });
+  }
+
+  if (httpError.status === 429) {
+    return new RaindropRateLimited({ retryAfter: httpError.retryAfter });
+  }
+
+  return new RaindropDeleteFailed({
+    message: httpError.body ?? `Raindrop delete failed (${httpError.status})`,
+    raindropId,
+  });
+}
+
+export function deleteRaindropBookmark(
+  accessToken: string,
+  raindropId: string,
+  options?: RaindropOptions
+): Effect.Effect<void, RaindropError> {
+  const fetcher = getFetcher(options);
+  const baseUrl = getBaseUrl(options);
+  const retrySchedule = createRateLimitRetrySchedule(options);
+
+  const url = new URL(`/rest/v1/raindrop/${raindropId}`, baseUrl);
+
+  const request = Effect.tryPromise({
+    try: async () => {
+      await fetchJson(fetcher, url.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        method: "DELETE",
+      });
+    },
+    catch: (error) => mapRaindropDeleteError(error, raindropId),
   });
 
   return pipe(request, Effect.retry(retrySchedule));

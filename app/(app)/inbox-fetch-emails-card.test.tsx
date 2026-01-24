@@ -1,39 +1,54 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { InboxFetchEmailsCard } from "./inbox-fetch-emails-card";
 
 const useQueryMock = vi.fn();
 const useActionMock = vi.fn();
+const toastErrorMock = vi.fn();
 
 vi.mock("convex/react", () => ({
   useAction: (...args: unknown[]) => useActionMock(...args),
   useQuery: (...args: unknown[]) => useQueryMock(...args),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => toastErrorMock(...args),
+  },
+}));
+
 afterEach(() => {
   cleanup();
   useQueryMock.mockReset();
   useActionMock.mockReset();
+  toastErrorMock.mockReset();
 });
 
 test("disables fetch button when a sync is running", () => {
   useActionMock.mockReturnValue(async () => null);
-  useQueryMock.mockReturnValue({
-    isStale: false,
-    run: {
-      id: "syncRuns:running",
-      lastHeartbeatAt: 0,
-      progress: {
-        fetchedEmails: 1,
-        insertedEmails: 0,
-        processedEmails: 0,
-        storedLinks: 0,
+  useQueryMock
+    .mockReturnValueOnce({
+      isStale: false,
+      run: {
+        id: "syncRuns:running",
+        lastHeartbeatAt: 0,
+        progress: {
+          fetchedEmails: 1,
+          insertedEmails: 0,
+          processedEmails: 0,
+          storedLinks: 0,
+        },
+        startedAt: 0,
+        status: "running",
       },
-      startedAt: 0,
-      status: "running",
-    },
-  });
+    })
+    .mockReturnValueOnce({
+      connected: true,
+      errorAt: null,
+      errorMessage: null,
+      errorTag: null,
+    });
 
   const rendered = render(<InboxFetchEmailsCard />);
   expect(
@@ -43,10 +58,33 @@ test("disables fetch button when a sync is running", () => {
 
 test("enables fetch button when there is no active sync", () => {
   useActionMock.mockReturnValue(async () => null);
-  useQueryMock.mockReturnValue(null);
+  useQueryMock.mockReturnValueOnce(null).mockReturnValueOnce({
+    connected: true,
+    errorAt: null,
+    errorMessage: null,
+    errorTag: null,
+  });
 
   const rendered = render(<InboxFetchEmailsCard />);
   expect(
     rendered.getByRole("button", { name: "Fetch new emails" })
   ).toBeEnabled();
+});
+
+test("shows a toast when a Gmail connection error appears", async () => {
+  useActionMock.mockReturnValue(async () => null);
+  useQueryMock.mockReturnValueOnce(null).mockReturnValueOnce({
+    connected: true,
+    errorAt: 123,
+    errorMessage: "Access token expired",
+    errorTag: "GmailTokenExpired",
+  });
+
+  render(<InboxFetchEmailsCard />);
+
+  await waitFor(() => {
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "Gmail connection expired. Reconnect in Settings."
+    );
+  });
 });

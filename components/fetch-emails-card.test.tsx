@@ -5,16 +5,19 @@ import { afterEach, expect, test, vi } from "vitest";
 import { FetchEmailsCard } from "./fetch-emails-card";
 
 const toastSuccessMock = vi.fn();
+const toastErrorMock = vi.fn();
 
 vi.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }));
 
 afterEach(() => {
   cleanup();
   toastSuccessMock.mockReset();
+  toastErrorMock.mockReset();
 });
 
 test("calls onFetch when Fetch new emails is clicked", async () => {
@@ -62,6 +65,7 @@ test("shows an error message when fetch fails", async () => {
     expect(rendered.getByRole("alert")).toHaveTextContent(
       "Gmail not connected"
     );
+    expect(toastErrorMock).toHaveBeenCalledWith("Gmail not connected");
   });
 });
 
@@ -86,5 +90,6 @@ test("shows an error message when fetch throws synchronously", async () => {
 
   await waitFor(() => {
     expect(rendered.getByRole("alert")).toHaveTextContent("Boom");
+    expect(toastErrorMock).toHaveBeenCalledWith("Boom");
   });
 });
