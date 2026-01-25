@@ -22,7 +22,7 @@ export const listSaved: FunctionReference<
     sortOrder: "oldest" | "newest";
   },
   {
-    continueCursor: string;
+    continueCursor: string | null;
     isDone: boolean;
     items: SavedLinkItem[];
   }

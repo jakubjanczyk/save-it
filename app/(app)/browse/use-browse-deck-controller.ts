@@ -1,7 +1,7 @@
 "use client";
 
 import type { GenericId } from "convex/values";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer } from "react";
 import { toast } from "sonner";
 
 import { SWIPE_THRESHOLD_PX } from "@/components/focus/focus-swipe";
@@ -246,7 +246,6 @@ export function useBrowseDeckController(params: {
     undefined,
     createInitialBrowseDeckState
   );
-  const prevItemIdsRef = useRef<string | null>(null);
 
   const topItem = state.queue[0] ?? null;
   const peekItem = state.queue[1] ?? null;
@@ -255,13 +254,6 @@ export function useBrowseDeckController(params: {
     if (!params.savedItems) {
       return;
     }
-
-    const itemIds = params.savedItems.map((item) => item.id).join(",");
-    if (itemIds === prevItemIdsRef.current) {
-      return;
-    }
-
-    prevItemIdsRef.current = itemIds;
     dispatch({
       items: params.savedItems,
       tag: "syncSaved",
