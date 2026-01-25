@@ -5,7 +5,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import { BrowseList } from "./browse-list";
 import type { SavedLinkItem } from "./convex-refs";
 
-const LOAD_MORE_REGEX = /load more/i;
+const NEXT_PAGE_REGEX = /next page/i;
+const PREVIOUS_REGEX = /previous/i;
 
 function createMockItem(
   id: string,
@@ -126,6 +127,7 @@ test("shows Load more button when not done", () => {
   render(
     <BrowseList
       continueCursor="cursor123"
+      hasPreviousPage={false}
       isDone={false}
       items={items}
       loading={false}
@@ -137,7 +139,7 @@ test("shows Load more button when not done", () => {
   );
 
   expect(
-    screen.getByRole("button", { name: LOAD_MORE_REGEX })
+    screen.getByRole("button", { name: NEXT_PAGE_REGEX })
   ).toBeInTheDocument();
 });
 
@@ -147,6 +149,7 @@ test("hides Load more button when isDone=true", () => {
   render(
     <BrowseList
       continueCursor={null}
+      hasPreviousPage={false}
       isDone={true}
       items={items}
       loading={false}
@@ -158,6 +161,29 @@ test("hides Load more button when isDone=true", () => {
   );
 
   expect(
-    screen.queryByRole("button", { name: LOAD_MORE_REGEX })
+    screen.queryByRole("button", { name: NEXT_PAGE_REGEX })
   ).not.toBeInTheDocument();
+});
+
+test("shows Previous button when onPreviousPage provided", () => {
+  const items = [createMockItem("1")];
+
+  render(
+    <BrowseList
+      continueCursor="cursor123"
+      hasPreviousPage={true}
+      isDone={false}
+      items={items}
+      loading={false}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      onLoadMore={() => undefined}
+      onPreviousPage={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  expect(
+    screen.getByRole("button", { name: PREVIOUS_REGEX })
+  ).toBeInTheDocument();
 });

@@ -20,14 +20,14 @@ import {
   sendToRaindrop,
   toggleFavoriteAction,
 } from "../convex-refs";
-import { useBrowseSavedLinks } from "../use-browse-saved-links";
+import { useBrowseSavedLinksPager } from "../use-browse-saved-links-pager";
 
 export function BrowseListPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sortOrder = parseSortOrder(searchParams.get("order"));
 
-  const saved = useBrowseSavedLinks({ sortOrder });
+  const saved = useBrowseSavedLinksPager({ sortOrder });
 
   const archive = useAction(archiveLink);
   const toggleFavorite = useAction(toggleFavoriteAction);
@@ -91,12 +91,14 @@ export function BrowseListPageClient() {
       />
       <BrowseList
         continueCursor={saved.continueCursor}
+        hasPreviousPage={saved.hasPreviousPage}
         isDone={saved.isDone}
         items={saved.items}
-        loading={saved.loadingMore}
+        loading={saved.loading}
         onArchive={handleArchive}
         onFavorite={handleFavorite}
-        onLoadMore={saved.loadMore}
+        onLoadMore={saved.nextPage}
+        onPreviousPage={saved.previousPage}
         onSendToRaindrop={syncEnabled ? handleSendToRaindrop : undefined}
         showSendToRaindrop={syncEnabled}
       />

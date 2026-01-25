@@ -10,12 +10,14 @@ import type { SavedLinkItem } from "./convex-refs";
 
 export function BrowseList(props: {
   continueCursor: string | null;
+  hasPreviousPage?: boolean;
   isDone: boolean;
   items: SavedLinkItem[];
   loading: boolean;
   onArchive: (item: SavedLinkItem) => void;
   onFavorite: (item: SavedLinkItem) => void;
   onLoadMore: () => void;
+  onPreviousPage?: () => void;
   onSendToRaindrop?: (item: SavedLinkItem) => void;
   showSendToRaindrop: boolean;
 }) {
@@ -86,18 +88,32 @@ export function BrowseList(props: {
           </div>
         ))}
       </div>
-      {!props.isDone && (
+      {!props.isDone || props.onPreviousPage ? (
         <div className="border-t p-3">
-          <Button
-            className="w-full"
-            disabled={props.loading}
-            onClick={props.onLoadMore}
-            variant="outline"
-          >
-            {props.loading ? "Loading..." : "Load more"}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {props.onPreviousPage ? (
+              <Button
+                className="w-full"
+                disabled={props.loading || !props.hasPreviousPage}
+                onClick={props.onPreviousPage}
+                variant="outline"
+              >
+                Previous
+              </Button>
+            ) : null}
+            {props.isDone ? null : (
+              <Button
+                className="w-full"
+                disabled={props.loading}
+                onClick={props.onLoadMore}
+                variant="outline"
+              >
+                {props.loading ? "Loading..." : "Next page"}
+              </Button>
+            )}
+          </div>
         </div>
-      )}
+      ) : null}
     </Card>
   );
 }
