@@ -16,34 +16,46 @@ interface ShortcutRow {
   keys: string;
 }
 
+export interface BrowseShortcutHandlers {
+  archiveCurrent?: () => void;
+  archiveCurrentLeft?: () => void;
+  archiveCurrentRight?: () => void;
+  favoriteCurrent?: () => void;
+  nextCard?: (startY?: number) => void;
+  openCurrent?: () => void;
+  previousCard?: (startY?: number) => void;
+  toggleView?: () => void;
+}
+
 export function BrowseShortcuts(props: {
   enabled: boolean;
-  onArchive?: () => void;
-  onArchiveLeft?: () => void;
-  onArchiveRight?: () => void;
-  onFavorite?: () => void;
-  onNextCard?: (startY?: number) => void;
-  onOpen?: () => void;
-  onPreviousCard?: (startY?: number) => void;
-  onToggleView?: () => void;
+  handlers?: BrowseShortcutHandlers;
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
 
+  const archive = props.handlers?.archiveCurrent;
+  const archiveLeft = props.handlers?.archiveCurrentLeft;
+  const archiveRight = props.handlers?.archiveCurrentRight;
+  const favorite = props.handlers?.favoriteCurrent;
+  const nextCard = props.handlers?.nextCard;
+  const open = props.handlers?.openCurrent;
+  const previousCard = props.handlers?.previousCard;
+  const toggleView = props.handlers?.toggleView;
+
   const shortcutRows: ShortcutRow[] = [
-    ...(props.onArchive || props.onArchiveLeft || props.onArchiveRight
+    ...(archive || archiveLeft || archiveRight
       ? [
           {
             action: "Archive link",
-            keys:
-              props.onArchiveLeft || props.onArchiveRight ? "A or ←/→" : "A",
+            keys: archiveLeft || archiveRight ? "A or ←/→" : "A",
           },
         ]
       : []),
-    ...(props.onFavorite ? [{ action: "Toggle favorite", keys: "F" }] : []),
-    ...(props.onOpen ? [{ action: "Open link", keys: "O or Enter" }] : []),
-    ...(props.onPreviousCard ? [{ action: "Previous card", keys: "↑" }] : []),
-    ...(props.onNextCard ? [{ action: "Next card", keys: "↓" }] : []),
-    ...(props.onToggleView ? [{ action: "Toggle view", keys: "V" }] : []),
+    ...(favorite ? [{ action: "Toggle favorite", keys: "F" }] : []),
+    ...(open ? [{ action: "Open link", keys: "O or Enter" }] : []),
+    ...(previousCard ? [{ action: "Previous card", keys: "↑" }] : []),
+    ...(nextCard ? [{ action: "Next card", keys: "↓" }] : []),
+    ...(toggleView ? [{ action: "Toggle view", keys: "V" }] : []),
     { action: "Show this help", keys: "?" },
   ];
 
@@ -58,23 +70,19 @@ export function BrowseShortcuts(props: {
       target instanceof HTMLSelectElement ||
       (target instanceof HTMLElement && target.isContentEditable);
 
-    const onArrowDown = props.onNextCard
-      ? () => props.onNextCard?.(1)
-      : undefined;
-    const onArrowUp = props.onPreviousCard
-      ? () => props.onPreviousCard?.(-1)
-      : undefined;
+    const onArrowDown = nextCard ? () => nextCard(1) : undefined;
+    const onArrowUp = previousCard ? () => previousCard(-1) : undefined;
 
     const keyHandlers: Record<string, (() => void) | undefined> = {
-      a: props.onArchive,
-      arrowleft: props.onArchiveLeft ?? props.onArchive,
-      arrowright: props.onArchiveRight ?? props.onArchive,
+      a: archive,
+      arrowleft: archiveLeft ?? archive,
+      arrowright: archiveRight ?? archive,
       arrowdown: onArrowDown,
       arrowup: onArrowUp,
-      enter: props.onOpen,
-      f: props.onFavorite,
-      o: props.onOpen,
-      v: props.onToggleView,
+      enter: open,
+      f: favorite,
+      o: open,
+      v: toggleView,
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -108,16 +116,16 @@ export function BrowseShortcuts(props: {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    archive,
+    archiveLeft,
+    archiveRight,
+    favorite,
     props.enabled,
     helpOpen,
-    props.onArchive,
-    props.onArchiveLeft,
-    props.onArchiveRight,
-    props.onFavorite,
-    props.onNextCard,
-    props.onOpen,
-    props.onPreviousCard,
-    props.onToggleView,
+    nextCard,
+    open,
+    previousCard,
+    toggleView,
   ]);
 
   return (

@@ -34,7 +34,9 @@ test("does not fire actions while help open", async () => {
   const user = userEvent.setup();
   const onArchive = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onArchive={onArchive} />);
+  render(
+    <BrowseShortcuts enabled={true} handlers={{ archiveCurrent: onArchive }} />
+  );
 
   await user.keyboard("?");
   expect(screen.getByText("Browse shortcuts")).toBeInTheDocument();
@@ -47,7 +49,9 @@ test("calls onArchive when A pressed", async () => {
   const user = userEvent.setup();
   const onArchive = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onArchive={onArchive} />);
+  render(
+    <BrowseShortcuts enabled={true} handlers={{ archiveCurrent: onArchive }} />
+  );
 
   await user.keyboard("a");
 
@@ -58,7 +62,12 @@ test("calls onFavorite when F pressed", async () => {
   const user = userEvent.setup();
   const onFavorite = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onFavorite={onFavorite} />);
+  render(
+    <BrowseShortcuts
+      enabled={true}
+      handlers={{ favoriteCurrent: onFavorite }}
+    />
+  );
 
   await user.keyboard("f");
 
@@ -69,7 +78,7 @@ test("opens URL when O pressed", async () => {
   const user = userEvent.setup();
   const onOpen = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onOpen={onOpen} />);
+  render(<BrowseShortcuts enabled={true} handlers={{ openCurrent: onOpen }} />);
 
   await user.keyboard("o");
 
@@ -80,7 +89,9 @@ test("calls onToggleView when V pressed", async () => {
   const user = userEvent.setup();
   const onToggleView = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onToggleView={onToggleView} />);
+  render(
+    <BrowseShortcuts enabled={true} handlers={{ toggleView: onToggleView }} />
+  );
 
   await user.keyboard("v");
 
@@ -91,7 +102,12 @@ test("calls onArchiveLeft when left arrow pressed", async () => {
   const user = userEvent.setup();
   const onArchiveLeft = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onArchiveLeft={onArchiveLeft} />);
+  render(
+    <BrowseShortcuts
+      enabled={true}
+      handlers={{ archiveCurrentLeft: onArchiveLeft }}
+    />
+  );
 
   await user.keyboard("{ArrowLeft}");
 
@@ -102,7 +118,12 @@ test("calls onArchiveRight when right arrow pressed", async () => {
   const user = userEvent.setup();
   const onArchiveRight = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onArchiveRight={onArchiveRight} />);
+  render(
+    <BrowseShortcuts
+      enabled={true}
+      handlers={{ archiveCurrentRight: onArchiveRight }}
+    />
+  );
 
   await user.keyboard("{ArrowRight}");
 
@@ -113,7 +134,12 @@ test("calls onPreviousCard when up arrow pressed", async () => {
   const user = userEvent.setup();
   const onPreviousCard = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onPreviousCard={onPreviousCard} />);
+  render(
+    <BrowseShortcuts
+      enabled={true}
+      handlers={{ previousCard: onPreviousCard }}
+    />
+  );
 
   await user.keyboard("{ArrowUp}");
 
@@ -124,7 +150,9 @@ test("calls onNextCard when down arrow pressed", async () => {
   const user = userEvent.setup();
   const onNextCard = vi.fn();
 
-  render(<BrowseShortcuts enabled={true} onNextCard={onNextCard} />);
+  render(
+    <BrowseShortcuts enabled={true} handlers={{ nextCard: onNextCard }} />
+  );
 
   await user.keyboard("{ArrowDown}");
 
@@ -135,7 +163,9 @@ test("does not fire actions when disabled", async () => {
   const user = userEvent.setup();
   const onArchive = vi.fn();
 
-  render(<BrowseShortcuts enabled={false} onArchive={onArchive} />);
+  render(
+    <BrowseShortcuts enabled={false} handlers={{ archiveCurrent: onArchive }} />
+  );
 
   await user.keyboard("a");
 

@@ -96,7 +96,7 @@ export function BrowseListPageClient() {
     <div className="grid gap-4">
       <BrowseShortcuts
         enabled={true}
-        onToggleView={() => router.push(deckHref)}
+        handlers={{ toggleView: () => router.push(deckHref) }}
       />
       <div className="flex items-center justify-between">
         <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">

@@ -104,14 +104,10 @@ export function BrowseDeckPageClient() {
       <div className="relative z-10">
         <BrowseShortcuts
           enabled={controller.handlers.shortcutsEnabled}
-          onArchive={controller.handlers.archiveCurrent}
-          onArchiveLeft={controller.handlers.archiveCurrentLeft}
-          onArchiveRight={controller.handlers.archiveCurrentRight}
-          onFavorite={controller.handlers.favoriteCurrent}
-          onNextCard={controller.handlers.nextCard}
-          onOpen={controller.handlers.openCurrent}
-          onPreviousCard={controller.handlers.previousCard}
-          onToggleView={() => router.push(listHref)}
+          handlers={{
+            ...controller.handlers,
+            toggleView: () => router.push(listHref),
+          }}
         />
       </div>
       <div className="grid gap-1">
@@ -142,26 +138,12 @@ export function BrowseDeckPageClient() {
         </div>
         {activeItem ? (
           <BrowseDeck
-            dismissing={controller.state.archiving}
-            navigating={controller.state.navigating}
-            nextItem={controller.state.nextItem}
-            onArchive={controller.handlers.archiveCurrent}
-            onDismissAnimationComplete={
-              controller.handlers.onDismissAnimationComplete
-            }
-            onFavorite={controller.handlers.favoriteCurrent}
-            onNavigateAnimationComplete={
-              controller.handlers.onNavigateAnimationComplete
-            }
-            onNextCard={controller.handlers.nextCard}
-            onPreviousCard={controller.handlers.previousCard}
+            controller={controller}
             onSendToRaindrop={
               syncEnabled && !activeItem.raindropId
                 ? () => handleSendToRaindrop(activeItem)
                 : undefined
             }
-            previousItem={controller.state.previousItem}
-            shownItem={controller.state.shownItem}
             showSendToRaindrop={syncEnabled}
           />
         ) : (
