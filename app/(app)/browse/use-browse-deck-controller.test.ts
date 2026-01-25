@@ -8,8 +8,14 @@ interface BrowseDeckState {
   archiving: { item: SavedLinkItem; startX: number } | null;
   navigating: {
     direction: "next" | "previous";
-    item: SavedLinkItem;
     startY: number;
+    window: {
+      current: SavedLinkItem;
+      next: SavedLinkItem | null;
+      nextNext: SavedLinkItem | null;
+      prev: SavedLinkItem | null;
+      prevPrev: SavedLinkItem | null;
+    };
   } | null;
   history: SavedLinkItem[];
   queue: SavedLinkItem[];
@@ -58,7 +64,7 @@ function browseDeckReducer(
       ...updatedQueue.map((item) => item.id),
       ...updatedHistory.map((item) => item.id),
       state.archiving?.item.id,
-      state.navigating?.item.id,
+      state.navigating?.window.current.id,
     ]);
 
     const newItems = event.items.filter((item) => !knownIds.has(item.id));
@@ -72,11 +78,17 @@ function browseDeckReducer(
         : state.archiving;
 
     const updatedNavigatingItem = state.navigating
-      ? byId.get(state.navigating.item.id)
+      ? byId.get(state.navigating.window.current.id)
       : undefined;
     const updatedNavigating =
       state.navigating && updatedNavigatingItem
-        ? { ...state.navigating, item: updatedNavigatingItem }
+        ? {
+            ...state.navigating,
+            window: {
+              ...state.navigating.window,
+              current: updatedNavigatingItem,
+            },
+          }
         : state.navigating;
 
     return {
@@ -135,6 +147,14 @@ function browseDeckReducer(
       return state;
     }
 
+    const window = {
+      current,
+      next: state.queue[1] ?? null,
+      nextNext: state.queue[2] ?? null,
+      prev: state.history.at(-1) ?? null,
+      prevPrev: state.history.at(-2) ?? null,
+    };
+
     if (event.direction === "next") {
       if (state.queue.length <= 1) {
         return state;
@@ -145,8 +165,8 @@ function browseDeckReducer(
         history: [...state.history, current],
         navigating: {
           direction: event.direction,
-          item: current,
           startY: event.startY,
+          window,
         },
         queue: state.queue.slice(1),
       };
@@ -162,8 +182,8 @@ function browseDeckReducer(
       history: state.history.slice(0, -1),
       navigating: {
         direction: event.direction,
-        item: current,
         startY: event.startY,
+        window,
       },
       queue: [previous, ...state.queue],
     };
@@ -209,8 +229,11 @@ function browseDeckReducer(
         : state.archiving;
 
     const updatedNavigating =
-      state.navigating?.item.id === event.item.id
-        ? { ...state.navigating, item: event.item }
+      state.navigating?.window.current.id === event.item.id
+        ? {
+            ...state.navigating,
+            window: { ...state.navigating.window, current: event.item },
+          }
         : state.navigating;
 
     return {
@@ -436,7 +459,17 @@ test("finishNavigate clears navigating state", () => {
   const state: BrowseDeckState = {
     archiving: null,
     history: [],
-    navigating: { direction: "next", item: item1, startY: 0 },
+    navigating: {
+      direction: "next",
+      startY: 0,
+      window: {
+        current: item1,
+        next: null,
+        nextNext: null,
+        prev: null,
+        prevPrev: null,
+      },
+    },
     queue: [item2],
   };
 

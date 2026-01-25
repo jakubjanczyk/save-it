@@ -12,8 +12,14 @@ interface BrowseDeckState {
   archiving: { item: SavedLinkItem; startX: number } | null;
   navigating: {
     direction: "next" | "previous";
-    item: SavedLinkItem;
     startY: number;
+    window: {
+      current: SavedLinkItem;
+      next: SavedLinkItem | null;
+      nextNext: SavedLinkItem | null;
+      prev: SavedLinkItem | null;
+      prevPrev: SavedLinkItem | null;
+    };
   } | null;
   history: SavedLinkItem[];
   queue: SavedLinkItem[];
@@ -47,7 +53,7 @@ function syncSaved(state: BrowseDeckState, items: SavedLinkItem[]) {
     ...updatedQueue.map((item) => item.id),
     ...updatedHistory.map((item) => item.id),
     state.archiving?.item.id,
-    state.navigating?.item.id,
+    state.navigating?.window.current.id,
   ]);
 
   const newItems = items.filter((item) => !knownIds.has(item.id));
@@ -61,11 +67,32 @@ function syncSaved(state: BrowseDeckState, items: SavedLinkItem[]) {
       : state.archiving;
 
   const updatedNavigatingItem = state.navigating
-    ? byId.get(state.navigating.item.id)
+    ? byId.get(state.navigating.window.current.id)
     : undefined;
   const updatedNavigating =
     state.navigating && updatedNavigatingItem
-      ? { ...state.navigating, item: updatedNavigatingItem }
+      ? {
+          ...state.navigating,
+          window: {
+            current: updatedNavigatingItem,
+            next: state.navigating.window.next
+              ? (byId.get(state.navigating.window.next.id) ??
+                state.navigating.window.next)
+              : null,
+            nextNext: state.navigating.window.nextNext
+              ? (byId.get(state.navigating.window.nextNext.id) ??
+                state.navigating.window.nextNext)
+              : null,
+            prev: state.navigating.window.prev
+              ? (byId.get(state.navigating.window.prev.id) ??
+                state.navigating.window.prev)
+              : null,
+            prevPrev: state.navigating.window.prevPrev
+              ? (byId.get(state.navigating.window.prevPrev.id) ??
+                state.navigating.window.prevPrev)
+              : null,
+          },
+        }
       : state.navigating;
 
   return {
@@ -128,6 +155,14 @@ function startNavigate(
     return state;
   }
 
+  const window = {
+    current,
+    next: state.queue[1] ?? null,
+    nextNext: state.queue[2] ?? null,
+    prev: state.history.at(-1) ?? null,
+    prevPrev: state.history.at(-2) ?? null,
+  };
+
   if (direction === "next") {
     if (state.queue.length <= 1) {
       return state;
@@ -136,7 +171,7 @@ function startNavigate(
     return {
       ...state,
       history: [...state.history, current],
-      navigating: { direction, item: current, startY },
+      navigating: { direction, startY, window },
       queue: state.queue.slice(1),
     };
   }
@@ -149,7 +184,7 @@ function startNavigate(
   return {
     ...state,
     history: state.history.slice(0, -1),
-    navigating: { direction, item: current, startY },
+    navigating: { direction, startY, window },
     queue: [previous, ...state.queue],
   };
 }
@@ -193,10 +228,33 @@ function updateItem(state: BrowseDeckState, item: SavedLinkItem) {
       ? { ...state.archiving, item }
       : state.archiving;
 
-  const updatedNavigating =
-    state.navigating?.item.id === item.id
-      ? { ...state.navigating, item }
-      : state.navigating;
+  const updatedNavigating = state.navigating
+    ? {
+        ...state.navigating,
+        window: {
+          current:
+            state.navigating.window.current.id === item.id
+              ? item
+              : state.navigating.window.current,
+          next:
+            state.navigating.window.next?.id === item.id
+              ? item
+              : state.navigating.window.next,
+          nextNext:
+            state.navigating.window.nextNext?.id === item.id
+              ? item
+              : state.navigating.window.nextNext,
+          prev:
+            state.navigating.window.prev?.id === item.id
+              ? item
+              : state.navigating.window.prev,
+          prevPrev:
+            state.navigating.window.prevPrev?.id === item.id
+              ? item
+              : state.navigating.window.prevPrev,
+        },
+      }
+    : null;
 
   return {
     ...state,
@@ -249,7 +307,8 @@ export function useBrowseDeckController(params: {
 
   const canNavigate = !(state.archiving || state.navigating);
   const topItem = state.queue[0] ?? null;
-  const peekItem = state.queue[1] ?? null;
+  const nextItem = state.queue[1] ?? null;
+  const previousItem = state.history.at(-1) ?? null;
 
   useEffect(() => {
     if (!params.savedItems) {
@@ -363,7 +422,8 @@ export function useBrowseDeckController(params: {
       canNext: canNavigate && state.queue.length > 1,
       canPrevious: canNavigate && state.history.length > 0,
       navigating: state.navigating,
-      peekItem,
+      nextItem,
+      previousItem,
       remainingCount: state.queue.length + state.history.length,
       shownItem: topItem,
     },

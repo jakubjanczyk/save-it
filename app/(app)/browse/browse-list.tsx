@@ -28,12 +28,6 @@ export function BrowseList(props: {
 
   return (
     <Card className="min-w-0 overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b p-4">
-        <span className="font-medium text-sm">Saved Links</span>
-        <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
-          {props.items.length} loaded
-        </span>
-      </div>
       <div className="divide-y">
         {props.items.map((item) => (
           <div

@@ -76,7 +76,7 @@ export function BrowseDeckPageClient() {
 
   const activeItem =
     controller.state.archiving?.item ??
-    controller.state.navigating?.item ??
+    controller.state.navigating?.window.current ??
     controller.state.shownItem;
 
   const handleSendToRaindrop = async (item: SavedLinkItem) => {
@@ -101,41 +101,49 @@ export function BrowseDeckPageClient() {
 
   return (
     <div className="grid gap-4">
-      <BrowseShortcuts
-        enabled={controller.handlers.shortcutsEnabled}
-        onArchive={controller.handlers.archiveCurrent}
-        onArchiveLeft={controller.handlers.archiveCurrentLeft}
-        onArchiveRight={controller.handlers.archiveCurrentRight}
-        onFavorite={controller.handlers.favoriteCurrent}
-        onNextCard={controller.handlers.nextCard}
-        onOpen={controller.handlers.openCurrent}
-        onPreviousCard={controller.handlers.previousCard}
-        onToggleView={() => router.push(listHref)}
-      />
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          disabled={!controller.state.canPrevious}
-          onClick={() => controller.handlers.previousCard(-1)}
-          size="icon"
-          title="Previous card"
-          variant="outline"
-        >
-          <ArrowUp className="h-4 w-4" />
-        </Button>
-        <Button
-          disabled={!controller.state.canNext}
-          onClick={() => controller.handlers.nextCard(1)}
-          size="icon"
-          title="Next card"
-          variant="outline"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </Button>
+      <div className="relative z-10">
+        <BrowseShortcuts
+          enabled={controller.handlers.shortcutsEnabled}
+          onArchive={controller.handlers.archiveCurrent}
+          onArchiveLeft={controller.handlers.archiveCurrentLeft}
+          onArchiveRight={controller.handlers.archiveCurrentRight}
+          onFavorite={controller.handlers.favoriteCurrent}
+          onNextCard={controller.handlers.nextCard}
+          onOpen={controller.handlers.openCurrent}
+          onPreviousCard={controller.handlers.previousCard}
+          onToggleView={() => router.push(listHref)}
+        />
+      </div>
+      <div className="relative z-10 flex items-center justify-between gap-2">
+        <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
+          {controller.state.remainingCount} remaining
+        </span>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            disabled={!controller.state.canPrevious}
+            onClick={() => controller.handlers.previousCard(-1)}
+            size="icon"
+            title="Previous card"
+            variant="outline"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <Button
+            disabled={!controller.state.canNext}
+            onClick={() => controller.handlers.nextCard(1)}
+            size="icon"
+            title="Next card"
+            variant="outline"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       {activeItem ? (
         <BrowseDeck
           dismissing={controller.state.archiving}
           navigating={controller.state.navigating}
+          nextItem={controller.state.nextItem}
           onArchive={controller.handlers.archiveCurrent}
           onDismissAnimationComplete={
             controller.handlers.onDismissAnimationComplete
@@ -151,8 +159,7 @@ export function BrowseDeckPageClient() {
               ? () => handleSendToRaindrop(activeItem)
               : undefined
           }
-          peekItem={controller.state.peekItem}
-          remainingCount={controller.state.remainingCount}
+          previousItem={controller.state.previousItem}
           shownItem={controller.state.shownItem}
           showSendToRaindrop={syncEnabled}
         />

@@ -33,14 +33,6 @@ export function BrowseCard(props: {
             {item.title}
           </div>
         </div>
-        <a
-          className="block min-h-[1lh] truncate text-muted-foreground text-sm underline underline-offset-2"
-          href={item.url}
-          rel="noreferrer noopener"
-          target="_blank"
-        >
-          {item.url}
-        </a>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

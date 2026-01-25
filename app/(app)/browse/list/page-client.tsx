@@ -98,6 +98,11 @@ export function BrowseListPageClient() {
         enabled={true}
         onToggleView={() => router.push(deckHref)}
       />
+      <div className="flex items-center justify-between">
+        <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
+          {saved.items.length} loaded
+        </span>
+      </div>
       <BrowseList
         continueCursor={saved.continueCursor}
         hasPreviousPage={saved.hasPreviousPage}

@@ -26,7 +26,7 @@ afterEach(() => {
   cleanup();
 });
 
-test("renders link title and URL", () => {
+test("renders link title", () => {
   const item = createMockItem({
     title: "My Test Title",
     url: "https://example.com/my-url",
@@ -42,7 +42,6 @@ test("renders link title and URL", () => {
   );
 
   expect(screen.getByText("My Test Title")).toBeInTheDocument();
-  expect(screen.getByText("https://example.com/my-url")).toBeInTheDocument();
 });
 
 test("calls onArchive when Archive clicked", async () => {
