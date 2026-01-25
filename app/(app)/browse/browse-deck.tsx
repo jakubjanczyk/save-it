@@ -236,7 +236,7 @@ export function BrowseDeck(props: {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
         >
-          <Card className="relative h-full">
+          <Card className="relative h-full py-0">
             <div className="flex items-center justify-between gap-2 border-b p-4">
               <span className="font-medium text-sm">Saved Links</span>
               <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
@@ -281,7 +281,7 @@ export function BrowseDeck(props: {
           y,
         }}
       >
-        <Card className="relative">
+        <Card className="relative py-0">
           <motion.div style={{ filter: blurFilter }}>
             <div className="flex items-center justify-between gap-2 border-b p-4">
               <span className="font-medium text-sm">Saved Links</span>

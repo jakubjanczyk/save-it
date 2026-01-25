@@ -1,11 +1,12 @@
 "use client";
 
-import { Archive, ExternalLink, Heart, Send } from "lucide-react";
+import { Archive, ExternalLink, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+import { BrowseFavoriteHeart } from "./browse-favorite-heart";
 import type { SavedLinkItem } from "./convex-refs";
 
 export function BrowseList(props: {
@@ -58,13 +59,15 @@ export function BrowseList(props: {
                 <Archive className="h-4 w-4" />
               </Button>
               <Button
+                className="cursor-pointer"
                 onClick={() => props.onFavorite(item)}
                 size="icon"
                 title={item.isFavorite ? "Remove favorite" : "Add favorite"}
                 variant="ghost"
               >
-                <Heart
-                  className={cn("h-4 w-4", item.isFavorite && "fill-current")}
+                <BrowseFavoriteHeart
+                  iconClassName="h-4 w-4"
+                  isFavorite={item.isFavorite}
                 />
               </Button>
               {props.showSendToRaindrop &&

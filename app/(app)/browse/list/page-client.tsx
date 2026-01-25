@@ -65,10 +65,19 @@ export function BrowseListPageClient() {
   };
 
   const handleFavorite = async (item: SavedLinkItem) => {
+    let previousIsFavorite: boolean | null = null;
+    saved.updateItem(item.id, (previous) => {
+      previousIsFavorite = previous.isFavorite;
+      return { ...previous, isFavorite: !previous.isFavorite };
+    });
+
     try {
       const result = await toggleFavorite({ linkId: item.id });
       saved.updateItem(item.id, { isFavorite: result.isFavorite });
     } catch (error) {
+      if (previousIsFavorite !== null) {
+        saved.updateItem(item.id, { isFavorite: previousIsFavorite });
+      }
       toast.error(
         error instanceof Error ? error.message : "Toggle favorite failed"
       );

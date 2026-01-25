@@ -1,10 +1,11 @@
 "use client";
 
-import { Archive, ExternalLink, Heart, Send } from "lucide-react";
+import { Archive, ExternalLink, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { BrowseFavoriteHeart } from "./browse-favorite-heart";
 import type { SavedLinkItem } from "./convex-refs";
 
 export function BrowseCard(props: {
@@ -44,24 +45,29 @@ export function BrowseCard(props: {
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
+          aria-label="Archive"
+          className="h-11 w-11 cursor-pointer rounded-full"
           disabled={disabled}
           onClick={props.onArchive}
-          size="sm"
-          variant="outline"
+          size="icon"
+          title="Archive"
+          variant="ghost"
         >
-          <Archive className="mr-1 h-4 w-4" />
-          Archive
+          <Archive className="h-5 w-5" />
         </Button>
         <Button
+          aria-label={item.isFavorite ? "Favorited" : "Favorite"}
+          className="h-11 w-11 cursor-pointer rounded-full"
           disabled={disabled}
           onClick={props.onFavorite}
-          size="sm"
-          variant="outline"
+          size="icon"
+          title={item.isFavorite ? "Remove favorite" : "Add favorite"}
+          variant="ghost"
         >
-          <Heart
-            className={cn("mr-1 h-4 w-4", item.isFavorite && "fill-current")}
+          <BrowseFavoriteHeart
+            iconClassName="h-5 w-5"
+            isFavorite={item.isFavorite}
           />
-          {item.isFavorite ? "Favorited" : "Favorite"}
         </Button>
         {props.showSendToRaindrop &&
           !item.raindropId &&

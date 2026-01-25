@@ -55,9 +55,22 @@ export function BrowseDeckPageClient() {
     loadMore: saved.loadMore,
     savedItems: saved.items,
     toggleFavorite: async (args) => {
-      const result = await toggleFavorite(args);
-      saved.updateItem(args.linkId, { isFavorite: result.isFavorite });
-      return result;
+      let previousIsFavorite: boolean | null = null;
+      saved.updateItem(args.linkId, (previous) => {
+        previousIsFavorite = previous.isFavorite;
+        return { ...previous, isFavorite: !previous.isFavorite };
+      });
+
+      try {
+        const result = await toggleFavorite(args);
+        saved.updateItem(args.linkId, { isFavorite: result.isFavorite });
+        return result;
+      } catch (error) {
+        if (previousIsFavorite !== null) {
+          saved.updateItem(args.linkId, { isFavorite: previousIsFavorite });
+        }
+        throw error;
+      }
     },
   });
 
