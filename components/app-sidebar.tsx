@@ -68,7 +68,7 @@ function isNavItemActive(pathname: string, href: string) {
   }
 
   if (href === "/browse") {
-    return pathname === "/browse";
+    return pathname === "/browse" || pathname.startsWith("/browse/");
   }
 
   if (href === "/inbox") {
