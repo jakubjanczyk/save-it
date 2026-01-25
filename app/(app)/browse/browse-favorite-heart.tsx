@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const SPARKLE_DURATION_MS = 650;
+const PULSE_DURATION_MS = 250;
 
 interface Sparkle {
   delay: number;
@@ -64,15 +65,48 @@ function FavoriteSparkles(props: { burstKey: number }) {
 export function BrowseFavoriteHeart(props: {
   className?: string;
   iconClassName?: string;
+  itemId: string;
   isFavorite: boolean;
 }) {
+  const prevItemIdRef = useRef(props.itemId);
   const prevFavoriteRef = useRef(props.isFavorite);
+  const sparkleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [burstKey, setBurstKey] = useState(0);
   const [burstVisible, setBurstVisible] = useState(false);
+  const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
+    if (prevItemIdRef.current !== props.itemId) {
+      prevItemIdRef.current = props.itemId;
+      prevFavoriteRef.current = props.isFavorite;
+
+      if (sparkleTimeoutRef.current) {
+        clearTimeout(sparkleTimeoutRef.current);
+        sparkleTimeoutRef.current = null;
+      }
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
+      setBurstVisible(false);
+      setPulse(false);
+      return;
+    }
+
     const wasFavorite = prevFavoriteRef.current;
     prevFavoriteRef.current = props.isFavorite;
+
+    if (sparkleTimeoutRef.current) {
+      clearTimeout(sparkleTimeoutRef.current);
+      sparkleTimeoutRef.current = null;
+    }
+    if (pulseTimeoutRef.current) {
+      clearTimeout(pulseTimeoutRef.current);
+      pulseTimeoutRef.current = null;
+    }
+    setBurstVisible(false);
+    setPulse(false);
 
     if (wasFavorite || !props.isFavorite) {
       return;
@@ -80,18 +114,33 @@ export function BrowseFavoriteHeart(props: {
 
     setBurstKey((prev) => prev + 1);
     setBurstVisible(true);
+    setPulse(true);
 
-    const timeout = setTimeout(
-      () => setBurstVisible(false),
-      SPARKLE_DURATION_MS
-    );
-    return () => clearTimeout(timeout);
-  }, [props.isFavorite]);
+    sparkleTimeoutRef.current = setTimeout(() => {
+      setBurstVisible(false);
+      sparkleTimeoutRef.current = null;
+    }, SPARKLE_DURATION_MS);
+
+    pulseTimeoutRef.current = setTimeout(() => {
+      setPulse(false);
+      pulseTimeoutRef.current = null;
+    }, PULSE_DURATION_MS);
+
+    return () => {
+      if (sparkleTimeoutRef.current) {
+        clearTimeout(sparkleTimeoutRef.current);
+        sparkleTimeoutRef.current = null;
+      }
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
+    };
+  }, [props.isFavorite, props.itemId]);
 
   const heartClasses = useMemo(
     () =>
       cn(
-        "transition-colors",
         props.isFavorite ? "fill-red-500 text-red-500" : undefined,
         props.iconClassName
       ),
@@ -101,7 +150,8 @@ export function BrowseFavoriteHeart(props: {
   return (
     <span className={cn("relative inline-flex", props.className)}>
       <motion.span
-        animate={props.isFavorite ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+        animate={pulse ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+        initial={false}
         transition={{ duration: 0.25, ease: "easeOut" }}
       >
         <Heart className={heartClasses} />

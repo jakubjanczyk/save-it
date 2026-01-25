@@ -48,7 +48,7 @@ export function BrowseCard(props: {
           aria-label="Archive"
           className="h-11 w-11 cursor-pointer rounded-full"
           disabled={disabled}
-          onClick={props.onArchive}
+          onClick={() => props.onArchive()}
           size="icon"
           title="Archive"
           variant="ghost"
@@ -59,7 +59,7 @@ export function BrowseCard(props: {
           aria-label={item.isFavorite ? "Favorited" : "Favorite"}
           className="h-11 w-11 cursor-pointer rounded-full"
           disabled={disabled}
-          onClick={props.onFavorite}
+          onClick={() => props.onFavorite()}
           size="icon"
           title={item.isFavorite ? "Remove favorite" : "Add favorite"}
           variant="ghost"
@@ -67,6 +67,7 @@ export function BrowseCard(props: {
           <BrowseFavoriteHeart
             iconClassName="h-5 w-5"
             isFavorite={item.isFavorite}
+            itemId={item.id}
           />
         </Button>
         {props.showSendToRaindrop &&
@@ -74,7 +75,7 @@ export function BrowseCard(props: {
           props.onSendToRaindrop && (
             <Button
               disabled={disabled}
-              onClick={props.onSendToRaindrop}
+              onClick={() => props.onSendToRaindrop?.()}
               size="sm"
               variant="outline"
             >

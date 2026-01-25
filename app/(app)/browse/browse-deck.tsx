@@ -24,6 +24,9 @@ const NAV_EXIT_PX = 90;
 const MAX_BLUR_PX = 10;
 const EXIT_DURATION_S = 0.45;
 const NAV_DURATION_S = 0.18;
+const CLICK_ARCHIVE_DELAY_S = 0.45;
+const CLICK_ARCHIVE_DURATION_S = 0.26;
+const CLICK_ARCHIVE_BLUR_DURATION_S = 0.12;
 
 function exitX(startX: number) {
   return startX >= 0 ? EXIT_DISTANCE_PX : -EXIT_DISTANCE_PX;
@@ -54,6 +57,7 @@ export function BrowseDeck(props: {
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
+  const dismissBlur = useMotionValue(0);
   const transitionOpacity = useMotionValue(1);
   const transitionScale = useMotionValue(1);
   const dragControls = useDragControls();
@@ -64,8 +68,12 @@ export function BrowseDeck(props: {
     [-SWIPE_THRESHOLD_PX, 0, SWIPE_THRESHOLD_PX],
     [1, 0, 1]
   );
-  const blurFilter = useTransform(x, (value) => {
-    const abs = Math.min(Math.abs(value), SWIPE_THRESHOLD_PX);
+  const blurFilter = useTransform([x, dismissBlur], (values) => {
+    const [xValue, blurValue] = values as [number, number];
+    const abs = Math.min(
+      Math.max(Math.abs(xValue), blurValue),
+      SWIPE_THRESHOLD_PX
+    );
     const blur = (abs / SWIPE_THRESHOLD_PX) * MAX_BLUR_PX;
     return `blur(${blur.toFixed(2)}px)`;
   });
@@ -92,6 +100,34 @@ export function BrowseDeck(props: {
 
     lastDismissedIdRef.current = dismissingId;
 
+    transitionOpacity.set(1);
+    transitionScale.set(1);
+    dismissBlur.set(0);
+
+    if (props.dismissing.startX === 0) {
+      x.set(0);
+
+      Promise.all([
+        animate(dismissBlur, SWIPE_THRESHOLD_PX, {
+          duration: CLICK_ARCHIVE_BLUR_DURATION_S,
+          ease: "easeOut",
+        }),
+        animate(transitionOpacity, 0, {
+          delay: CLICK_ARCHIVE_DELAY_S,
+          duration: CLICK_ARCHIVE_DURATION_S,
+          ease: "easeOut",
+        }),
+        animate(transitionScale, 0.98, {
+          delay: CLICK_ARCHIVE_DELAY_S,
+          duration: CLICK_ARCHIVE_DURATION_S,
+          ease: "easeOut",
+        }),
+      ]).then(() => {
+        props.onDismissAnimationComplete();
+      });
+      return;
+    }
+
     x.set(props.dismissing.startX);
     animate(x, exitX(props.dismissing.startX), {
       duration: EXIT_DURATION_S,
@@ -99,7 +135,17 @@ export function BrowseDeck(props: {
     }).then(() => {
       props.onDismissAnimationComplete();
     });
-  }, [props.dismissing, props.onDismissAnimationComplete, x]);
+  }, [
+    props.dismissing,
+    props.onDismissAnimationComplete,
+    dismissBlur,
+    dismissBlur.set,
+    transitionOpacity,
+    transitionOpacity.set,
+    transitionScale,
+    transitionScale.set,
+    x,
+  ]);
 
   useLayoutEffect(() => {
     if (props.dismissing) {
@@ -108,7 +154,16 @@ export function BrowseDeck(props: {
 
     lastDismissedIdRef.current = null;
     x.set(0);
-  }, [props.dismissing, x]);
+    dismissBlur.set(0);
+    transitionOpacity.set(1);
+    transitionScale.set(1);
+  }, [
+    props.dismissing,
+    dismissBlur.set,
+    transitionOpacity.set,
+    transitionScale.set,
+    x,
+  ]);
 
   useEffect(() => {
     if (!props.navigating) {
@@ -141,10 +196,6 @@ export function BrowseDeck(props: {
         duration: NAV_DURATION_S,
         ease: "easeOut",
       }),
-      animate(transitionScale, 0.98, {
-        duration: NAV_DURATION_S,
-        ease: "easeOut",
-      }),
     ]).then(() => {
       props.onNavigateAnimationComplete();
     });
@@ -152,8 +203,8 @@ export function BrowseDeck(props: {
     props.navigating,
     props.onNavigateAnimationComplete,
     transitionOpacity,
-    transitionScale,
     y,
+    transitionScale.set,
   ]);
 
   useLayoutEffect(() => {
@@ -244,10 +295,15 @@ export function BrowseDeck(props: {
               </span>
             </div>
             <BrowseCard
-              disabled={true}
+              disabled={false}
               item={underItem}
               onArchive={() => undefined}
               onFavorite={() => undefined}
+              onSendToRaindrop={
+                props.showSendToRaindrop && !underItem.raindropId
+                  ? () => undefined
+                  : undefined
+              }
               showSendToRaindrop={props.showSendToRaindrop}
             />
           </Card>
@@ -310,7 +366,7 @@ export function BrowseDeck(props: {
                 opacity: isDismissing ? 1 : archiveOpacity,
               }}
             >
-              Archive
+              {isDismissing ? "Archived" : "Archive"}
             </motion.div>
           </div>
         </Card>

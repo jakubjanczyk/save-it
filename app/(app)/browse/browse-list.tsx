@@ -68,6 +68,7 @@ export function BrowseList(props: {
                 <BrowseFavoriteHeart
                   iconClassName="h-4 w-4"
                   isFavorite={item.isFavorite}
+                  itemId={item.id}
                 />
               </Button>
               {props.showSendToRaindrop &&
