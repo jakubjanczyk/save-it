@@ -114,58 +114,60 @@ export function BrowseDeckPageClient() {
           onToggleView={() => router.push(listHref)}
         />
       </div>
-      <div className="relative z-10 flex items-center justify-between gap-2">
-        <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
-          {controller.state.remainingCount} remaining
-        </span>
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            disabled={!controller.state.canPrevious}
-            onClick={() => controller.handlers.previousCard(-1)}
-            size="icon"
-            title="Previous card"
-            variant="outline"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
-          <Button
-            disabled={!controller.state.canNext}
-            onClick={() => controller.handlers.nextCard(1)}
-            size="icon"
-            title="Next card"
-            variant="outline"
-          >
-            <ArrowDown className="h-4 w-4" />
-          </Button>
+      <div className="grid gap-1">
+        <div className="relative z-10 flex items-center justify-between gap-2">
+          <span className="shrink-0 rounded bg-primary/20 px-2 py-1 font-medium text-foreground text-xs">
+            {controller.state.remainingCount} remaining
+          </span>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              disabled={!controller.state.canPrevious}
+              onClick={() => controller.handlers.previousCard(-1)}
+              size="icon"
+              title="Previous card"
+              variant="outline"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button
+              disabled={!controller.state.canNext}
+              onClick={() => controller.handlers.nextCard(1)}
+              size="icon"
+              title="Next card"
+              variant="outline"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+        {activeItem ? (
+          <BrowseDeck
+            dismissing={controller.state.archiving}
+            navigating={controller.state.navigating}
+            nextItem={controller.state.nextItem}
+            onArchive={controller.handlers.archiveCurrent}
+            onDismissAnimationComplete={
+              controller.handlers.onDismissAnimationComplete
+            }
+            onFavorite={controller.handlers.favoriteCurrent}
+            onNavigateAnimationComplete={
+              controller.handlers.onNavigateAnimationComplete
+            }
+            onNextCard={controller.handlers.nextCard}
+            onPreviousCard={controller.handlers.previousCard}
+            onSendToRaindrop={
+              syncEnabled && !activeItem.raindropId
+                ? () => handleSendToRaindrop(activeItem)
+                : undefined
+            }
+            previousItem={controller.state.previousItem}
+            shownItem={controller.state.shownItem}
+            showSendToRaindrop={syncEnabled}
+          />
+        ) : (
+          <BrowseLoading />
+        )}
       </div>
-      {activeItem ? (
-        <BrowseDeck
-          dismissing={controller.state.archiving}
-          navigating={controller.state.navigating}
-          nextItem={controller.state.nextItem}
-          onArchive={controller.handlers.archiveCurrent}
-          onDismissAnimationComplete={
-            controller.handlers.onDismissAnimationComplete
-          }
-          onFavorite={controller.handlers.favoriteCurrent}
-          onNavigateAnimationComplete={
-            controller.handlers.onNavigateAnimationComplete
-          }
-          onNextCard={controller.handlers.nextCard}
-          onPreviousCard={controller.handlers.previousCard}
-          onSendToRaindrop={
-            syncEnabled && !activeItem.raindropId
-              ? () => handleSendToRaindrop(activeItem)
-              : undefined
-          }
-          previousItem={controller.state.previousItem}
-          shownItem={controller.state.shownItem}
-          showSendToRaindrop={syncEnabled}
-        />
-      ) : (
-        <BrowseLoading />
-      )}
     </div>
   );
 }

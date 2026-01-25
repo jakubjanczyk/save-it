@@ -38,6 +38,8 @@ const CLICK_ARCHIVE_BLUR_DURATION_S = 0.12;
 const CLIP_X_PX = 6000;
 const CARD_GAP_PX = 12;
 
+const VERTICAL_SWIPE_THRESHOLD_PX = 70;
+
 const PEEK_PX = 20;
 const PEEK_OPACITY = 0.85;
 const PEEK_SCALE = 0.985;
@@ -271,8 +273,8 @@ function useDeckNavigateAnimation(params: {
     const targetY = params.navigating.direction === "next" ? -height : height;
     const initialY = clamp(
       params.navigating.startY,
-      -SWIPE_THRESHOLD_PX,
-      SWIPE_THRESHOLD_PX
+      -VERTICAL_SWIPE_THRESHOLD_PX,
+      VERTICAL_SWIPE_THRESHOLD_PX
     );
 
     params.x.set(0);
@@ -387,7 +389,7 @@ function useDeckDragEnd(params: {
 
     if (
       Math.abs(dx) < SWIPE_THRESHOLD_PX &&
-      Math.abs(dy) < SWIPE_THRESHOLD_PX
+      Math.abs(dy) < VERTICAL_SWIPE_THRESHOLD_PX
     ) {
       animate(params.x, 0, { damping: 28, stiffness: 300, type: "spring" });
       animate(params.y, 0, { damping: 28, stiffness: 300, type: "spring" });
@@ -406,7 +408,7 @@ function useDeckDragEnd(params: {
       return;
     }
 
-    if (Math.abs(dy) < SWIPE_THRESHOLD_PX) {
+    if (Math.abs(dy) < VERTICAL_SWIPE_THRESHOLD_PX) {
       animate(params.x, 0, { damping: 28, stiffness: 300, type: "spring" });
       animate(params.y, 0, { damping: 28, stiffness: 300, type: "spring" });
       return;
