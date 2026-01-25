@@ -247,6 +247,7 @@ export function useBrowseDeckController(params: {
     createInitialBrowseDeckState
   );
 
+  const canNavigate = !(state.archiving || state.navigating);
   const topItem = state.queue[0] ?? null;
   const peekItem = state.queue[1] ?? null;
 
@@ -323,7 +324,7 @@ export function useBrowseDeckController(params: {
       archiveCurrentRight: () => requestArchive(SWIPE_THRESHOLD_PX),
       favoriteCurrent: requestFavorite,
       nextCard: (startY?: number) => {
-        if (state.archiving || state.navigating) {
+        if (!canNavigate) {
           return false;
         }
         if (state.queue.length <= 1) {
@@ -341,7 +342,7 @@ export function useBrowseDeckController(params: {
       onNavigateAnimationComplete: () => dispatch({ tag: "finishNavigate" }),
       openCurrent,
       previousCard: (startY?: number) => {
-        if (state.archiving || state.navigating) {
+        if (!canNavigate) {
           return false;
         }
         if (state.history.length === 0) {
@@ -355,10 +356,12 @@ export function useBrowseDeckController(params: {
         });
         return true;
       },
-      shortcutsEnabled: !(state.archiving || state.navigating),
+      shortcutsEnabled: canNavigate,
     },
     state: {
       archiving: state.archiving,
+      canNext: canNavigate && state.queue.length > 1,
+      canPrevious: canNavigate && state.history.length > 0,
       navigating: state.navigating,
       peekItem,
       remainingCount: state.queue.length + state.history.length,

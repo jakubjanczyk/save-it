@@ -1,10 +1,12 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { parseRaindropSyncEnabled } from "@/lib/settings";
 import { RAINDROP_SYNC_ENABLED_SETTING_KEY } from "@/lib/settings-keys";
 
@@ -97,6 +99,26 @@ export function BrowseDeckPageClient() {
         onPreviousCard={controller.handlers.previousCard}
         onToggleView={() => router.push(listHref)}
       />
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          disabled={!controller.state.canPrevious}
+          onClick={() => controller.handlers.previousCard(-1)}
+          size="icon"
+          title="Previous card"
+          variant="outline"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button
+          disabled={!controller.state.canNext}
+          onClick={() => controller.handlers.nextCard(1)}
+          size="icon"
+          title="Next card"
+          variant="outline"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </Button>
+      </div>
       {activeItem ? (
         <BrowseDeck
           dismissing={controller.state.archiving}
