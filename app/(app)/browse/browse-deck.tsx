@@ -35,6 +35,7 @@ const CLICK_ARCHIVE_DELAY_S = 0.45;
 const CLICK_ARCHIVE_DURATION_S = 0.26;
 const CLICK_ARCHIVE_BLUR_DURATION_S = 0.12;
 
+const CLIP_X_PX = 6000;
 const CARD_GAP_PX = 12;
 
 const PEEK_PX = 20;
@@ -770,8 +771,11 @@ export function BrowseDeck(props: {
   return (
     <div className="relative z-0">
       <div
-        className="relative overflow-hidden"
-        style={{ height: containerHeight }}
+        className="relative overflow-visible"
+        style={{
+          clipPath: `inset(0px -${CLIP_X_PX}px 0px -${CLIP_X_PX}px)`,
+          height: containerHeight,
+        }}
       >
         {props.dismissing && props.shownItem ? (
           <DeckDismissingUnderlay shownItem={props.shownItem} top={activeTop} />
@@ -796,8 +800,10 @@ export function BrowseDeck(props: {
           className="absolute inset-x-0"
           drag={canDrag}
           dragControls={dragControls}
+          dragDirectionLock={true}
           dragElastic={0.18}
           dragListener={false}
+          dragMomentum={false}
           onDragEnd={onDragEnd}
           onPointerDown={onActivePointerDown}
           style={{
