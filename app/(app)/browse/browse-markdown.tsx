@@ -198,6 +198,38 @@ function isOrderedItem(line: string) {
   return OL_ITEM_RE.test(line);
 }
 
+function isListItemForType(line: string, ordered: boolean) {
+  return ordered ? isOrderedItem(line) : UL_ITEM_RE.test(line);
+}
+
+function stripListMarker(line: string, ordered: boolean) {
+  return ordered
+    ? line.replace(OL_STRIP_RE, "")
+    : line.replace(UL_STRIP_RE, "");
+}
+
+function skipBlankLinesInList(
+  lines: string[],
+  index: number,
+  ordered: boolean
+) {
+  let i = index;
+  while (i < lines.length && isBlank(lines[i] ?? "")) {
+    i += 1;
+  }
+
+  if (i >= lines.length) {
+    return null;
+  }
+
+  const next = lines[i] ?? "";
+  if (!isListItemForType(next, ordered)) {
+    return null;
+  }
+
+  return i;
+}
+
 function parseList(lines: string[], startIndex: number) {
   const first = lines[startIndex] ?? "";
   if (!isListItem(first)) {
@@ -209,13 +241,20 @@ function parseList(lines: string[], startIndex: number) {
   let i = startIndex;
   while (i < lines.length) {
     const current = lines[i] ?? "";
-    if (ordered ? !isOrderedItem(current) : !UL_ITEM_RE.test(current)) {
+    if (isBlank(current)) {
+      const nextIndex = skipBlankLinesInList(lines, i, ordered);
+      if (nextIndex !== null) {
+        i = nextIndex;
+        continue;
+      }
       break;
     }
 
-    const content = ordered
-      ? current.replace(OL_STRIP_RE, "")
-      : current.replace(UL_STRIP_RE, "");
+    if (!isListItemForType(current, ordered)) {
+      break;
+    }
+
+    const content = stripListMarker(current, ordered);
     items.push(<li key={items.length}>{parseInline(content)}</li>);
     i += 1;
   }
