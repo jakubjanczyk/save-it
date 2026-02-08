@@ -8,6 +8,7 @@ import { classifyContentKind } from "../lib/link-summary/content-kind";
 import { extractMainContent } from "../lib/link-summary/extract-main-content";
 import { extractBestTitleFromHtml } from "../lib/link-summary/extract-title";
 import { fetchHtml } from "../lib/link-summary/fetch-html";
+import { isJavaScriptRequiredHtml } from "../lib/link-summary/is-javascript-required";
 import {
   LINK_SUMMARY_PROMPT_VERSION,
   llmSummarizeLink,
@@ -575,6 +576,15 @@ export const generateSummary = internalAction({
         linkId: args.linkId as GenericId<"links">,
         message,
         stage: "fetch",
+      });
+      return null;
+    }
+
+    if (isJavaScriptRequiredHtml(html)) {
+      await ctx.runMutation(setSummaryFailedRef, {
+        linkId: args.linkId as GenericId<"links">,
+        message: "Page requires JavaScript to render; skipping summary",
+        stage: "extract",
       });
       return null;
     }

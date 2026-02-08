@@ -364,6 +364,63 @@ test("retrySummary clears errors and sets summaryStatus=pending before job runs"
   }
 });
 
+test("generateSummary skips LLM when page requires JavaScript", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Source title",
+      url: "https://example.com/post",
+      summaryStatus: "pending",
+      summaryAttemptCount: 1,
+    })
+  );
+
+  const restoreFetch = withMockFetch(() =>
+    Promise.resolve(
+      new Response(
+        "<html><body><noscript>JavaScript is not available</noscript></body></html>",
+        { headers: { "content-type": "text/html" }, status: 200 }
+      )
+    )
+  );
+
+  try {
+    await t.action(generateSummary, { linkId });
+  } finally {
+    restoreFetch();
+  }
+
+  expect(generateTextMock).not.toHaveBeenCalled();
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryStatus).toBe("failed");
+  expect(updated?.summaryErrorStage).toBe("extract");
+  expect(updated?.summaryErrorMessage?.toLowerCase()).toContain("javascript");
+});
+
 test("retrySummary throws for non-saved links", async () => {
   const t = convexTest(schema, modules);
 
