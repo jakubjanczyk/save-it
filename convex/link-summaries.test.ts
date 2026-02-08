@@ -146,7 +146,6 @@ test("generateSummary stores article summary outputs", async () => {
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("success");
-  expect(updated?.summaryContentKind).toBe("article");
   expect(updated?.summaryTldr).toBe("TL;DR");
   expect(updated?.summaryWorthReading).toBe("yes");
   expect(updated?.summaryCredibility).toBe("high");
@@ -218,7 +217,6 @@ test("generateSummary stores github summary without longSummary", async () => {
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("success");
-  expect(updated?.summaryContentKind).toBe("github");
   expect(updated?.summaryLongSummary).toBeUndefined();
 });
 

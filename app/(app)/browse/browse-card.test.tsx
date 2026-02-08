@@ -142,7 +142,6 @@ test("renders summary content in Summary modal when success", async () => {
 test("hides long summary section when not present (e.g. GitHub)", async () => {
   const user = userEvent.setup();
   const item = createMockItem({
-    summaryContentKind: "github",
     summaryCredibility: "unknown",
     summaryCredibilityReason: "No clear signals.",
     summaryStatus: "success",

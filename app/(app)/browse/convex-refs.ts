@@ -10,13 +10,11 @@ export interface SavedLinkItem {
   raindropId?: string;
   savedAt?: number;
   summaryAttemptCount?: number;
-  summaryContentKind?: "article" | "github" | "other";
   summaryCredibility?: "high" | "medium" | "low" | "unknown";
   summaryCredibilityReason?: string;
   summaryErrorMessage?: string;
   summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
   summaryExtractedTitle?: string;
-  summaryExtractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
   summaryLongSummary?: string;
   summaryModel?: string;
   summaryPromptVersion?: string;

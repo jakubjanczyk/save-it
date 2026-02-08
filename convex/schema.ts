@@ -52,19 +52,7 @@ export default defineSchema({
         v.literal("failed")
       )
     ),
-    summaryContentKind: v.optional(
-      v.union(v.literal("article"), v.literal("github"), v.literal("other"))
-    ),
     summaryExtractedTitle: v.optional(v.string()),
-    summaryExtractedTitleSource: v.optional(
-      v.union(
-        v.literal("h1"),
-        v.literal("og"),
-        v.literal("twitter"),
-        v.literal("title"),
-        v.literal("llm")
-      )
-    ),
     summaryTldr: v.optional(v.string()),
     summaryWorthReading: v.optional(
       v.union(v.literal("yes"), v.literal("maybe"), v.literal("no"))

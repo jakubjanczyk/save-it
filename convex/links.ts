@@ -122,7 +122,6 @@ const tryStartSummaryRunRef = makeFunctionReference(
   "mutation",
   "internal",
   {
-    contentKind: "article" | "github" | "other";
     linkId: GenericId<"links">;
     model: string;
     promptVersion: string;
@@ -136,9 +135,7 @@ const setSummaryRunningRef = makeFunctionReference(
   "mutation",
   "internal",
   {
-    contentKind: "article" | "github" | "other";
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
     linkId: GenericId<"links">;
     model: string;
     promptVersion: string;
@@ -152,11 +149,9 @@ const setSummarySuccessRef = makeFunctionReference(
   "mutation",
   "internal",
   {
-    contentKind: "article" | "github" | "other";
     credibility: "high" | "medium" | "low" | "unknown";
     credibilityReason: string;
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
     linkId: GenericId<"links">;
     longSummary?: string;
     tldr: string;
@@ -378,21 +373,7 @@ export const setSummaryRunning = internalMutation({
     linkId: v.id("links"),
     model: v.string(),
     promptVersion: v.string(),
-    contentKind: v.union(
-      v.literal("article"),
-      v.literal("github"),
-      v.literal("other")
-    ),
     extractedTitle: v.optional(v.string()),
-    extractedTitleSource: v.optional(
-      v.union(
-        v.literal("h1"),
-        v.literal("og"),
-        v.literal("twitter"),
-        v.literal("title"),
-        v.literal("llm")
-      )
-    ),
   },
   handler: async (ctx, args) => {
     const link = await ctx.db.get(args.linkId);
@@ -401,11 +382,9 @@ export const setSummaryRunning = internalMutation({
     }
 
     await ctx.db.patch(args.linkId, {
-      summaryContentKind: args.contentKind,
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryExtractedTitle: args.extractedTitle,
-      summaryExtractedTitleSource: args.extractedTitleSource,
       summaryModel: args.model,
       summaryPromptVersion: args.promptVersion,
       summaryStatus: "running",
@@ -419,21 +398,7 @@ export const setSummaryRunning = internalMutation({
 export const setSummarySuccess = internalMutation({
   args: {
     linkId: v.id("links"),
-    contentKind: v.union(
-      v.literal("article"),
-      v.literal("github"),
-      v.literal("other")
-    ),
     extractedTitle: v.optional(v.string()),
-    extractedTitleSource: v.optional(
-      v.union(
-        v.literal("h1"),
-        v.literal("og"),
-        v.literal("twitter"),
-        v.literal("title"),
-        v.literal("llm")
-      )
-    ),
     tldr: v.string(),
     worthReading: v.union(
       v.literal("yes"),
@@ -457,15 +422,12 @@ export const setSummarySuccess = internalMutation({
     }
 
     await ctx.db.patch(args.linkId, {
-      summaryContentKind: args.contentKind,
       summaryCredibility: args.credibility,
       summaryCredibilityReason: args.credibilityReason,
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryExtractedTitle: args.extractedTitle,
-      summaryExtractedTitleSource: args.extractedTitleSource,
-      summaryLongSummary:
-        args.contentKind === "article" ? args.longSummary : undefined,
+      summaryLongSummary: args.longSummary,
       summaryStatus: "success",
       summaryTldr: args.tldr,
       summaryUpdatedAt: Date.now(),
@@ -537,11 +499,6 @@ export const hasPendingLinksByEmail = internalQuery({
 export const tryStartSummaryRun = internalMutation({
   args: {
     linkId: v.id("links"),
-    contentKind: v.union(
-      v.literal("article"),
-      v.literal("github"),
-      v.literal("other")
-    ),
     model: v.string(),
     promptVersion: v.string(),
   },
@@ -560,7 +517,6 @@ export const tryStartSummaryRun = internalMutation({
     }
 
     await ctx.db.patch(args.linkId, {
-      summaryContentKind: args.contentKind,
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryModel: args.model,
@@ -593,10 +549,8 @@ export const generateSummary = internalAction({
     }
 
     const modelName = getLlmModelName();
-    const initialKind = classifyContentKind(link.url);
 
     const started = await ctx.runMutation(tryStartSummaryRunRef, {
-      contentKind: initialKind,
       linkId: args.linkId as GenericId<"links">,
       model: modelName,
       promptVersion: LINK_SUMMARY_PROMPT_VERSION,
@@ -629,9 +583,7 @@ export const generateSummary = internalAction({
     const extractedTitle = extractBestTitleFromHtml(html);
 
     await ctx.runMutation(setSummaryRunningRef, {
-      contentKind: kind,
       extractedTitle: extractedTitle?.title,
-      extractedTitleSource: extractedTitle?.source,
       linkId: args.linkId as GenericId<"links">,
       model: modelName,
       promptVersion: LINK_SUMMARY_PROMPT_VERSION,
@@ -658,11 +610,9 @@ export const generateSummary = internalAction({
       );
 
       await ctx.runMutation(setSummarySuccessRef, {
-        contentKind: kind,
         credibility: output.credibility,
         credibilityReason: output.credibilityReason,
         extractedTitle: extractedTitle?.title,
-        extractedTitleSource: extractedTitle?.source,
         linkId: args.linkId as GenericId<"links">,
         longSummary:
           kind === "article" && "longSummary" in output
@@ -948,13 +898,11 @@ export const listSaved = query({
       raindropId?: string;
       savedAt?: number;
       summaryAttemptCount?: number;
-      summaryContentKind?: "article" | "github" | "other";
       summaryCredibility?: "high" | "medium" | "low" | "unknown";
       summaryCredibilityReason?: string;
       summaryErrorMessage?: string;
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
-      summaryExtractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
       summaryLongSummary?: string;
       summaryModel?: string;
       summaryPromptVersion?: string;
@@ -976,13 +924,11 @@ export const listSaved = query({
         raindropId: link.raindropId,
         savedAt: link.savedAt,
         summaryAttemptCount: link.summaryAttemptCount,
-        summaryContentKind: link.summaryContentKind,
         summaryCredibility: link.summaryCredibility,
         summaryCredibilityReason: link.summaryCredibilityReason,
         summaryErrorMessage: link.summaryErrorMessage,
         summaryErrorStage: link.summaryErrorStage,
         summaryExtractedTitle: link.summaryExtractedTitle,
-        summaryExtractedTitleSource: link.summaryExtractedTitleSource,
         summaryLongSummary: link.summaryLongSummary,
         summaryModel: link.summaryModel,
         summaryPromptVersion: link.summaryPromptVersion,

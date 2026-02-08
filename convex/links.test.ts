@@ -76,13 +76,11 @@ const listSaved: FunctionReference<
       isFavorite: boolean;
       savedAt?: number;
       summaryAttemptCount?: number;
-      summaryContentKind?: "article" | "github" | "other";
       summaryCredibility?: "high" | "medium" | "low" | "unknown";
       summaryCredibilityReason?: string;
       summaryErrorMessage?: string;
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
-      summaryExtractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
       summaryLongSummary?: string;
       summaryModel?: string;
       summaryPromptVersion?: string;
@@ -130,9 +128,7 @@ const setSummaryRunning: FunctionReference<
     linkId: GenericId<"links">;
     model: string;
     promptVersion: string;
-    contentKind: "article" | "github" | "other";
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
   },
   null
 > = makeFunctionReference(
@@ -144,9 +140,7 @@ const setSummaryRunning: FunctionReference<
     linkId: GenericId<"links">;
     model: string;
     promptVersion: string;
-    contentKind: "article" | "github" | "other";
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
   },
   null
 >;
@@ -156,9 +150,7 @@ const setSummarySuccess: FunctionReference<
   "internal",
   {
     linkId: GenericId<"links">;
-    contentKind: "article" | "github" | "other";
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
     tldr: string;
     worthReading: "yes" | "maybe" | "no";
     worthReadingReason: string;
@@ -174,9 +166,7 @@ const setSummarySuccess: FunctionReference<
   "internal",
   {
     linkId: GenericId<"links">;
-    contentKind: "article" | "github" | "other";
     extractedTitle?: string;
-    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
     tldr: string;
     worthReading: "yes" | "maybe" | "no";
     worthReadingReason: string;
@@ -1370,11 +1360,9 @@ test("listSaved includes summary fields when present", async () => {
       title: "Saved Link",
       url: "https://example.com/saved",
       summaryAttemptCount: 2,
-      summaryContentKind: "article",
       summaryCredibility: "high",
       summaryCredibilityReason: "Has citations and author bio",
       summaryExtractedTitle: "Best Title",
-      summaryExtractedTitleSource: "h1",
       summaryLongSummary: "Long summary here",
       summaryModel: "gemini-test",
       summaryPromptVersion: "v0",
@@ -1390,9 +1378,7 @@ test("listSaved includes summary fields when present", async () => {
 
   expect(result.items).toHaveLength(1);
   expect(result.items[0]?.summaryStatus).toBe("success");
-  expect(result.items[0]?.summaryContentKind).toBe("article");
   expect(result.items[0]?.summaryExtractedTitle).toBe("Best Title");
-  expect(result.items[0]?.summaryExtractedTitleSource).toBe("h1");
   expect(result.items[0]?.summaryTldr).toBe("TL;DR here");
   expect(result.items[0]?.summaryWorthReading).toBe("yes");
   expect(result.items[0]?.summaryWorthReadingReason).toBe("Useful takeaways");
@@ -1776,21 +1762,17 @@ test("setSummaryRunning stores metadata and clears errors", async () => {
   );
 
   await t.mutation(setSummaryRunning, {
-    contentKind: "article",
     linkId,
     model: "gemini-test",
     promptVersion: "v0",
     extractedTitle: "Best Title",
-    extractedTitleSource: "h1",
   });
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("running");
-  expect(updated?.summaryContentKind).toBe("article");
   expect(updated?.summaryModel).toBe("gemini-test");
   expect(updated?.summaryPromptVersion).toBe("v0");
   expect(updated?.summaryExtractedTitle).toBe("Best Title");
-  expect(updated?.summaryExtractedTitleSource).toBe("h1");
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();
   expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
@@ -1833,12 +1815,10 @@ test("setSummarySuccess stores outputs and clears errors", async () => {
   );
 
   await t.mutation(setSummarySuccess, {
-    contentKind: "article",
     linkId,
     credibility: "high",
     credibilityReason: "Good sourcing",
     extractedTitle: "Best Title",
-    extractedTitleSource: "h1",
     longSummary: "Long summary here",
     tldr: "TL;DR here",
     worthReading: "yes",
@@ -1847,9 +1827,7 @@ test("setSummarySuccess stores outputs and clears errors", async () => {
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("success");
-  expect(updated?.summaryContentKind).toBe("article");
   expect(updated?.summaryExtractedTitle).toBe("Best Title");
-  expect(updated?.summaryExtractedTitleSource).toBe("h1");
   expect(updated?.summaryTldr).toBe("TL;DR here");
   expect(updated?.summaryWorthReading).toBe("yes");
   expect(updated?.summaryWorthReadingReason).toBe("Useful takeaways");
