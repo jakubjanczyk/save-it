@@ -3,6 +3,15 @@ import type { GenericId } from "convex/values";
 import { v } from "convex/values";
 import { Effect } from "effect";
 
+import { getLlmModelName } from "../lib/ai";
+import { classifyContentKind } from "../lib/link-summary/content-kind";
+import { extractMainContent } from "../lib/link-summary/extract-main-content";
+import { extractBestTitleFromHtml } from "../lib/link-summary/extract-title";
+import { fetchHtml } from "../lib/link-summary/fetch-html";
+import {
+  LINK_SUMMARY_PROMPT_VERSION,
+  llmSummarizeLink,
+} from "../lib/link-summary/llm-summarize-link";
 import {
   createRaindropBookmark,
   deleteRaindropBookmark,
@@ -35,6 +44,7 @@ interface LinkDoc {
   raindropId?: string;
   savedAt?: number;
   status: "pending" | "processing" | "saved" | "discarded" | "archived";
+  summaryStatus?: "pending" | "running" | "success" | "failed";
   title: string;
   url: string;
 }
@@ -103,6 +113,69 @@ const setSummaryPendingRef = makeFunctionReference(
   "mutation",
   "internal",
   { linkId: GenericId<"links"> },
+  null
+>;
+
+const tryStartSummaryRunRef = makeFunctionReference(
+  "links:tryStartSummaryRun"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    contentKind: "article" | "github" | "other";
+    linkId: GenericId<"links">;
+    model: string;
+    promptVersion: string;
+  },
+  { started: boolean }
+>;
+
+const setSummaryRunningRef = makeFunctionReference(
+  "links:setSummaryRunning"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    contentKind: "article" | "github" | "other";
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+    linkId: GenericId<"links">;
+    model: string;
+    promptVersion: string;
+  },
+  null
+>;
+
+const setSummarySuccessRef = makeFunctionReference(
+  "links:setSummarySuccess"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    contentKind: "article" | "github" | "other";
+    credibility: "high" | "medium" | "low" | "unknown";
+    credibilityReason: string;
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+    linkId: GenericId<"links">;
+    longSummary?: string;
+    tldr: string;
+    worthReading: "yes" | "maybe" | "no";
+    worthReadingReason: string;
+  },
+  null
+>;
+
+const setSummaryFailedRef = makeFunctionReference(
+  "links:setSummaryFailed"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    message: string;
+    stage: "fetch" | "extract" | "llm" | "parse";
+  },
   null
 >;
 
@@ -461,9 +534,157 @@ export const hasPendingLinksByEmail = internalQuery({
   },
 });
 
+export const tryStartSummaryRun = internalMutation({
+  args: {
+    linkId: v.id("links"),
+    contentKind: v.union(
+      v.literal("article"),
+      v.literal("github"),
+      v.literal("other")
+    ),
+    model: v.string(),
+    promptVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    if (link.status !== "saved") {
+      return { started: false };
+    }
+
+    if (link.summaryStatus === "running" || link.summaryStatus === "success") {
+      return { started: false };
+    }
+
+    await ctx.db.patch(args.linkId, {
+      summaryContentKind: args.contentKind,
+      summaryErrorMessage: undefined,
+      summaryErrorStage: undefined,
+      summaryModel: args.model,
+      summaryPromptVersion: args.promptVersion,
+      summaryStatus: "running",
+      summaryUpdatedAt: Date.now(),
+    });
+
+    return { started: true };
+  },
+});
+
 export const generateSummary = internalAction({
   args: { linkId: v.id("links") },
-  handler: () => {
+  handler: async (ctx, args) => {
+    const link = await ctx.runQuery(getLinkRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    if (!link) {
+      return null;
+    }
+
+    if (link.status !== "saved") {
+      return null;
+    }
+
+    if (link.summaryStatus === "running" || link.summaryStatus === "success") {
+      return null;
+    }
+
+    const modelName = getLlmModelName();
+    const initialKind = classifyContentKind(link.url);
+
+    const started = await ctx.runMutation(tryStartSummaryRunRef, {
+      contentKind: initialKind,
+      linkId: args.linkId as GenericId<"links">,
+      model: modelName,
+      promptVersion: LINK_SUMMARY_PROMPT_VERSION,
+    });
+
+    if (!started.started) {
+      return null;
+    }
+
+    let finalUrl = link.url;
+    let html: string;
+    try {
+      const fetched = await fetchHtml(fetch, link.url, {
+        maxBytes: 1_000_000,
+        timeoutMs: 15_000,
+      });
+      finalUrl = fetched.finalUrl;
+      html = fetched.html;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fetch failed";
+      await ctx.runMutation(setSummaryFailedRef, {
+        linkId: args.linkId as GenericId<"links">,
+        message,
+        stage: "fetch",
+      });
+      return null;
+    }
+
+    const kind = classifyContentKind(finalUrl);
+    const extractedTitle = extractBestTitleFromHtml(html);
+
+    await ctx.runMutation(setSummaryRunningRef, {
+      contentKind: kind,
+      extractedTitle: extractedTitle?.title,
+      extractedTitleSource: extractedTitle?.source,
+      linkId: args.linkId as GenericId<"links">,
+      model: modelName,
+      promptVersion: LINK_SUMMARY_PROMPT_VERSION,
+    });
+
+    const extracted = extractMainContent(html);
+    if (extracted.confidence === "low") {
+      await ctx.runMutation(setSummaryFailedRef, {
+        linkId: args.linkId as GenericId<"links">,
+        message: "Could not confidently extract main content",
+        stage: "extract",
+      });
+      return null;
+    }
+
+    try {
+      const output = await Effect.runPromise(
+        llmSummarizeLink({
+          contentKind: kind,
+          markdown: extracted.markdown,
+          title: extractedTitle?.title,
+          url: finalUrl,
+        })
+      );
+
+      await ctx.runMutation(setSummarySuccessRef, {
+        contentKind: kind,
+        credibility: output.credibility,
+        credibilityReason: output.credibilityReason,
+        extractedTitle: extractedTitle?.title,
+        extractedTitleSource: extractedTitle?.source,
+        linkId: args.linkId as GenericId<"links">,
+        longSummary:
+          kind === "article" && "longSummary" in output
+            ? output.longSummary
+            : undefined,
+        tldr: output.tldr,
+        worthReading: output.worthReading,
+        worthReadingReason: output.worthReadingReason,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "LLM failed";
+      const stage = message.toLowerCase().includes("malformed json")
+        ? "parse"
+        : "llm";
+
+      await ctx.runMutation(setSummaryFailedRef, {
+        linkId: args.linkId as GenericId<"links">,
+        message,
+        stage,
+      });
+    }
+
     return null;
   },
 });
