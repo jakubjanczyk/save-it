@@ -75,6 +75,22 @@ const listSaved: FunctionReference<
       id: GenericId<"links">;
       isFavorite: boolean;
       savedAt?: number;
+      summaryAttemptCount?: number;
+      summaryContentKind?: "article" | "github" | "other";
+      summaryCredibility?: "high" | "medium" | "low" | "unknown";
+      summaryCredibilityReason?: string;
+      summaryErrorMessage?: string;
+      summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
+      summaryExtractedTitle?: string;
+      summaryExtractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+      summaryLongSummary?: string;
+      summaryModel?: string;
+      summaryPromptVersion?: string;
+      summaryStatus?: "pending" | "running" | "success" | "failed";
+      summaryTldr?: string;
+      summaryUpdatedAt?: number;
+      summaryWorthReading?: "yes" | "maybe" | "no";
+      summaryWorthReadingReason?: string;
     }>;
   }
 > = makeFunctionReference("links:listSaved");
@@ -980,6 +996,75 @@ test("listSaved returns only saved links", async () => {
 
   expect(result.items).toHaveLength(1);
   expect(result.items[0]?.savedAt).toBeDefined();
+});
+
+test("listSaved includes summary fields when present", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const summaryUpdatedAt = Date.now();
+  await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+      summaryAttemptCount: 2,
+      summaryContentKind: "article",
+      summaryCredibility: "high",
+      summaryCredibilityReason: "Has citations and author bio",
+      summaryExtractedTitle: "Best Title",
+      summaryExtractedTitleSource: "h1",
+      summaryLongSummary: "Long summary here",
+      summaryModel: "gemini-test",
+      summaryPromptVersion: "v0",
+      summaryStatus: "success",
+      summaryTldr: "TL;DR here",
+      summaryUpdatedAt,
+      summaryWorthReading: "yes",
+      summaryWorthReadingReason: "Useful takeaways",
+    })
+  );
+
+  const result = await t.query(listSaved, { limit: 10, sortOrder: "oldest" });
+
+  expect(result.items).toHaveLength(1);
+  expect(result.items[0]?.summaryStatus).toBe("success");
+  expect(result.items[0]?.summaryContentKind).toBe("article");
+  expect(result.items[0]?.summaryExtractedTitle).toBe("Best Title");
+  expect(result.items[0]?.summaryExtractedTitleSource).toBe("h1");
+  expect(result.items[0]?.summaryTldr).toBe("TL;DR here");
+  expect(result.items[0]?.summaryWorthReading).toBe("yes");
+  expect(result.items[0]?.summaryWorthReadingReason).toBe("Useful takeaways");
+  expect(result.items[0]?.summaryCredibility).toBe("high");
+  expect(result.items[0]?.summaryCredibilityReason).toBe(
+    "Has citations and author bio"
+  );
+  expect(result.items[0]?.summaryLongSummary).toBe("Long summary here");
+  expect(result.items[0]?.summaryModel).toBe("gemini-test");
+  expect(result.items[0]?.summaryPromptVersion).toBe("v0");
+  expect(result.items[0]?.summaryAttemptCount).toBe(2);
+  expect(result.items[0]?.summaryUpdatedAt).toBe(summaryUpdatedAt);
 });
 
 test("listSaved respects sort order", async () => {

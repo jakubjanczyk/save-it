@@ -508,6 +508,22 @@ export const listSaved = query({
       isFavorite: boolean;
       raindropId?: string;
       savedAt?: number;
+      summaryAttemptCount?: number;
+      summaryContentKind?: "article" | "github" | "other";
+      summaryCredibility?: "high" | "medium" | "low" | "unknown";
+      summaryCredibilityReason?: string;
+      summaryErrorMessage?: string;
+      summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
+      summaryExtractedTitle?: string;
+      summaryExtractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+      summaryLongSummary?: string;
+      summaryModel?: string;
+      summaryPromptVersion?: string;
+      summaryStatus?: "pending" | "running" | "success" | "failed";
+      summaryTldr?: string;
+      summaryUpdatedAt?: number;
+      summaryWorthReading?: "yes" | "maybe" | "no";
+      summaryWorthReadingReason?: string;
       title: string;
       url: string;
     }> = [];
@@ -520,6 +536,22 @@ export const listSaved = query({
         isFavorite: link.isFavorite ?? false,
         raindropId: link.raindropId,
         savedAt: link.savedAt,
+        summaryAttemptCount: link.summaryAttemptCount,
+        summaryContentKind: link.summaryContentKind,
+        summaryCredibility: link.summaryCredibility,
+        summaryCredibilityReason: link.summaryCredibilityReason,
+        summaryErrorMessage: link.summaryErrorMessage,
+        summaryErrorStage: link.summaryErrorStage,
+        summaryExtractedTitle: link.summaryExtractedTitle,
+        summaryExtractedTitleSource: link.summaryExtractedTitleSource,
+        summaryLongSummary: link.summaryLongSummary,
+        summaryModel: link.summaryModel,
+        summaryPromptVersion: link.summaryPromptVersion,
+        summaryStatus: link.summaryStatus,
+        summaryTldr: link.summaryTldr,
+        summaryUpdatedAt: link.summaryUpdatedAt,
+        summaryWorthReading: link.summaryWorthReading,
+        summaryWorthReadingReason: link.summaryWorthReadingReason,
         title: link.title,
         url: link.url,
       });
