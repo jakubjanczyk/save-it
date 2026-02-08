@@ -53,6 +53,7 @@ export function BrowseDeckPageClient() {
       return null;
     },
     loadMore: saved.loadMore,
+    resetKey: sortOrder,
     savedItems: saved.items,
     toggleFavorite: async (args) => {
       let previousIsFavorite: boolean | null = null;

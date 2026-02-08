@@ -18,6 +18,7 @@ const PRELOAD_THRESHOLD = 5;
 export function useBrowseDeckController(params: {
   archive: (args: { linkId: GenericId<"links"> }) => Promise<unknown>;
   loadMore: () => void;
+  resetKey?: string;
   savedItems: SavedLinkItem[] | undefined;
   toggleFavorite: (args: {
     linkId: GenericId<"links">;
@@ -45,6 +46,14 @@ export function useBrowseDeckController(params: {
   const previousItem = previousItemId
     ? (itemsById.get(previousItemId) ?? null)
     : null;
+
+  useEffect(() => {
+    if (!params.resetKey) {
+      return;
+    }
+
+    dispatch({ tag: "reset" });
+  }, [params.resetKey]);
 
   useEffect(() => {
     if (!params.savedItems) {

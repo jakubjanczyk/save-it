@@ -246,3 +246,23 @@ test("finishNavigate clears navigating state", () => {
 
   expect(nextState.navigating).toBeNull();
 });
+
+test("reset clears navigation, history, and queue", () => {
+  const current = createMockItem("1");
+  const next = createMockItem("2");
+
+  const state: BrowseDeckState = {
+    archiving: { item: current, startX: 100 },
+    historyIds: [createMockItem("0").id],
+    navigating: {
+      direction: "next",
+      startY: 0,
+      window: createWindow({ current, next }),
+    },
+    queueIds: [current.id, next.id],
+  };
+
+  const nextState = browseDeckReducer(state, { tag: "reset" });
+
+  expect(nextState).toEqual(createInitialBrowseDeckState());
+});

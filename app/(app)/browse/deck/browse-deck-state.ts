@@ -31,6 +31,7 @@ export interface BrowseDeckState {
 }
 
 export type BrowseDeckEvent =
+  | { tag: "reset" }
   | { tag: "finishArchive" }
   | { tag: "finishNavigate" }
   | { tag: "requeueId"; id: LinkId }
@@ -189,6 +190,8 @@ export function browseDeckReducer(
   event: BrowseDeckEvent
 ): BrowseDeckState {
   switch (event.tag) {
+    case "reset":
+      return createInitialBrowseDeckState();
     case "syncSaved":
       return syncSaved(state, event.ids);
     case "startArchive":
