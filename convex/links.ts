@@ -784,6 +784,32 @@ export const save = action({
   },
 });
 
+export const retrySummary = action({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const link = await ctx.runQuery(getLinkRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    if (link.status !== "saved") {
+      throw new Error("Retry is only allowed for saved links");
+    }
+
+    await ctx.runMutation(setSummaryPendingRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+    await ctx.scheduler.runAfter(0, generateSummaryRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+
+    return null;
+  },
+});
+
 async function listPendingFocusBatchImpl(
   ctx: QueryCtx,
   args: { excludeIds?: GenericId<"links">[]; limit: number }

@@ -34,12 +34,26 @@ const generateSummary: FunctionReference<
   null
 >;
 
+const retrySummary: FunctionReference<
+  "action",
+  "public",
+  { linkId: GenericId<"links"> },
+  null
+> = makeFunctionReference("links:retrySummary");
+
 function withMockFetch(impl: typeof fetch) {
   const original = globalThis.fetch;
   vi.stubGlobal("fetch", impl);
   return () => {
     vi.stubGlobal("fetch", original);
   };
+}
+
+async function settleScheduledFunctions(t: ReturnType<typeof convexTest>) {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+  await t.finishInProgressScheduledFunctions();
 }
 
 test("generateSummary stores article summary outputs", async () => {
@@ -184,4 +198,115 @@ test("generateSummary stores github summary without longSummary", async () => {
   expect(updated?.summaryStatus).toBe("success");
   expect(updated?.summaryContentKind).toBe("github");
   expect(updated?.summaryLongSummary).toBeUndefined();
+});
+
+test("retrySummary increments attempt count and re-queues generateSummary", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Source title",
+      url: "https://example.com/post",
+      summaryAttemptCount: 1,
+      summaryErrorMessage: "Old error",
+      summaryErrorStage: "llm",
+      summaryStatus: "failed",
+    })
+  );
+
+  const restoreFetch = withMockFetch((input) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+    if (url.hostname === "example.com") {
+      return Promise.resolve(
+        new Response(
+          `<html><body><main>${"word ".repeat(300)}</main></body></html>`,
+          { headers: { "content-type": "text/html" }, status: 200 }
+        )
+      );
+    }
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  });
+
+  generateTextMock.mockResolvedValue({
+    output: {
+      tldr: "TL;DR",
+      worthReading: "yes",
+      worthReadingReason: "Reason",
+      credibility: "high",
+      credibilityReason: "Cred reason",
+      longSummary: "Long summary",
+    },
+  });
+
+  try {
+    await t.action(retrySummary, { linkId });
+    await settleScheduledFunctions(t);
+  } finally {
+    restoreFetch();
+  }
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryAttemptCount).toBe(2);
+  expect(updated?.summaryStatus).toBe("success");
+
+  const jobs = (await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect()
+  )) as Array<{ name: string }>;
+  expect(jobs.some((job) => job.name === "links:generateSummary")).toBe(true);
+});
+
+test("retrySummary throws for non-saved links", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Source title",
+      url: "https://example.com/post",
+    })
+  );
+
+  await expect(t.action(retrySummary, { linkId })).rejects.toThrow();
 });
