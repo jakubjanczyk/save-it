@@ -56,6 +56,28 @@ async function settleScheduledFunctions(t: ReturnType<typeof convexTest>) {
   await t.finishInProgressScheduledFunctions();
 }
 
+async function settleScheduledFunctionsWithFakeTimers(
+  t: ReturnType<typeof convexTest>
+) {
+  for (let i = 0; i < 50; i++) {
+    await vi.runOnlyPendingTimersAsync();
+    await t.finishInProgressScheduledFunctions();
+
+    const jobs = (await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    )) as Array<{ state: { kind: string } }>;
+
+    const unsettled = jobs.filter(
+      (job) => job.state.kind === "pending" || job.state.kind === "inProgress"
+    );
+    if (unsettled.length === 0) {
+      return;
+    }
+  }
+
+  throw new Error("Timed out waiting for scheduled functions to settle");
+}
+
 test("generateSummary stores article summary outputs", async () => {
   const t = convexTest(schema, modules);
 
@@ -275,6 +297,73 @@ test("retrySummary increments attempt count and re-queues generateSummary", asyn
     ctx.db.system.query("_scheduled_functions").collect()
   )) as Array<{ name: string }>;
   expect(jobs.some((job) => job.name === "links:generateSummary")).toBe(true);
+});
+
+test("retrySummary clears errors and sets summaryStatus=pending before job runs", async () => {
+  vi.useFakeTimers();
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Source title",
+      url: "https://example.com/post",
+      summaryAttemptCount: 1,
+      summaryErrorMessage: "Old error",
+      summaryErrorStage: "llm",
+      summaryStatus: "failed",
+    })
+  );
+
+  const restoreFetch = withMockFetch(() =>
+    Promise.resolve(
+      new Response("not html", {
+        headers: { "content-type": "text/plain" },
+        status: 200,
+      })
+    )
+  );
+
+  try {
+    await t.action(retrySummary, { linkId });
+
+    const updated = await t.run((ctx) => ctx.db.get(linkId));
+    expect(updated?.summaryAttemptCount).toBe(2);
+    expect(updated?.summaryStatus).toBe("pending");
+    expect(updated?.summaryErrorStage).toBeUndefined();
+    expect(updated?.summaryErrorMessage).toBeUndefined();
+
+    const jobs = (await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    )) as Array<{ name: string }>;
+    expect(jobs.some((job) => job.name === "links:generateSummary")).toBe(true);
+
+    await settleScheduledFunctionsWithFakeTimers(t);
+  } finally {
+    restoreFetch();
+    vi.useRealTimers();
+  }
 });
 
 test("retrySummary throws for non-saved links", async () => {

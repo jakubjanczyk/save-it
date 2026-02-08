@@ -240,6 +240,28 @@ async function settleScheduledFunctions(t: ReturnType<typeof convexTest>) {
   throw new Error("Timed out waiting for scheduled functions to settle");
 }
 
+async function settleScheduledFunctionsWithFakeTimers(
+  t: ReturnType<typeof convexTest>
+) {
+  for (let i = 0; i < 50; i++) {
+    await vi.runOnlyPendingTimersAsync();
+    await t.finishInProgressScheduledFunctions();
+
+    const jobs = (await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    )) as Array<{ state: { kind: string } }>;
+
+    const unsettled = jobs.filter(
+      (job) => job.state.kind === "pending" || job.state.kind === "inProgress"
+    );
+    if (unsettled.length === 0) {
+      return;
+    }
+  }
+
+  throw new Error("Timed out waiting for scheduled functions to settle");
+}
+
 test("listByEmail returns empty array when there are no links", async () => {
   const t = convexTest(schema, modules);
 
@@ -548,6 +570,78 @@ test("save sets summaryStatus pending and queues generateSummary", async () => {
   ).toHaveLength(1);
 
   await settleScheduledFunctions(t);
+});
+
+test("save initializes summaryStatus=pending before job runs", async () => {
+  vi.useFakeTimers();
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      createdAt: Date.now(),
+      key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+      updatedAt: Date.now(),
+      value: "false",
+    })
+  );
+
+  const restoreFetch = withMockFetch(() =>
+    Promise.resolve(
+      new Response("not html", {
+        headers: { "content-type": "text/plain" },
+        status: 200,
+      })
+    )
+  );
+
+  try {
+    await t.action(save, { linkId });
+
+    const updated = await t.run((ctx) => ctx.db.get(linkId));
+    expect(updated?.summaryStatus).toBe("pending");
+    expect(updated?.summaryAttemptCount).toBe(1);
+
+    const jobs = await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    );
+    expect(
+      jobs.filter((job) => job.name === "links:generateSummary")
+    ).toHaveLength(1);
+
+    await settleScheduledFunctionsWithFakeTimers(t);
+  } finally {
+    restoreFetch();
+    vi.useRealTimers();
+  }
 });
 
 test("save does not re-queue summaries for already-saved links", async () => {
