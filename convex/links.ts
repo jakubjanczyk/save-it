@@ -261,6 +261,158 @@ export const markPending = internalMutation({
   },
 });
 
+export const setSummaryPending = internalMutation({
+  args: { linkId: v.id("links") },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    await ctx.db.patch(args.linkId, {
+      summaryAttemptCount: (link.summaryAttemptCount ?? 0) + 1,
+      summaryErrorMessage: undefined,
+      summaryErrorStage: undefined,
+      summaryStatus: "pending",
+      summaryUpdatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+export const setSummaryRunning = internalMutation({
+  args: {
+    linkId: v.id("links"),
+    model: v.string(),
+    promptVersion: v.string(),
+    contentKind: v.union(
+      v.literal("article"),
+      v.literal("github"),
+      v.literal("other")
+    ),
+    extractedTitle: v.optional(v.string()),
+    extractedTitleSource: v.optional(
+      v.union(
+        v.literal("h1"),
+        v.literal("og"),
+        v.literal("twitter"),
+        v.literal("title"),
+        v.literal("llm")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    await ctx.db.patch(args.linkId, {
+      summaryContentKind: args.contentKind,
+      summaryErrorMessage: undefined,
+      summaryErrorStage: undefined,
+      summaryExtractedTitle: args.extractedTitle,
+      summaryExtractedTitleSource: args.extractedTitleSource,
+      summaryModel: args.model,
+      summaryPromptVersion: args.promptVersion,
+      summaryStatus: "running",
+      summaryUpdatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+export const setSummarySuccess = internalMutation({
+  args: {
+    linkId: v.id("links"),
+    contentKind: v.union(
+      v.literal("article"),
+      v.literal("github"),
+      v.literal("other")
+    ),
+    extractedTitle: v.optional(v.string()),
+    extractedTitleSource: v.optional(
+      v.union(
+        v.literal("h1"),
+        v.literal("og"),
+        v.literal("twitter"),
+        v.literal("title"),
+        v.literal("llm")
+      )
+    ),
+    tldr: v.string(),
+    worthReading: v.union(
+      v.literal("yes"),
+      v.literal("maybe"),
+      v.literal("no")
+    ),
+    worthReadingReason: v.string(),
+    credibility: v.union(
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low"),
+      v.literal("unknown")
+    ),
+    credibilityReason: v.string(),
+    longSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    await ctx.db.patch(args.linkId, {
+      summaryContentKind: args.contentKind,
+      summaryCredibility: args.credibility,
+      summaryCredibilityReason: args.credibilityReason,
+      summaryErrorMessage: undefined,
+      summaryErrorStage: undefined,
+      summaryExtractedTitle: args.extractedTitle,
+      summaryExtractedTitleSource: args.extractedTitleSource,
+      summaryLongSummary:
+        args.contentKind === "article" ? args.longSummary : undefined,
+      summaryStatus: "success",
+      summaryTldr: args.tldr,
+      summaryUpdatedAt: Date.now(),
+      summaryWorthReading: args.worthReading,
+      summaryWorthReadingReason: args.worthReadingReason,
+    });
+
+    return null;
+  },
+});
+
+export const setSummaryFailed = internalMutation({
+  args: {
+    linkId: v.id("links"),
+    stage: v.union(
+      v.literal("fetch"),
+      v.literal("extract"),
+      v.literal("llm"),
+      v.literal("parse")
+    ),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.linkId);
+    if (!link) {
+      throw new Error("Link not found");
+    }
+
+    await ctx.db.patch(args.linkId, {
+      summaryErrorMessage: args.message,
+      summaryErrorStage: args.stage,
+      summaryStatus: "failed",
+      summaryUpdatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
 export const discardLink = internalMutation({
   args: { linkId: v.id("links") },
   handler: async (ctx, args) => {

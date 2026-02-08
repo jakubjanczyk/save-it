@@ -109,6 +109,106 @@ const toggleFavoriteAction: FunctionReference<
   { isFavorite: boolean }
 > = makeFunctionReference("links:toggleFavoriteAction");
 
+const setSummaryPending: FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+> = makeFunctionReference(
+  "links:setSummaryPending"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+>;
+
+const setSummaryRunning: FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    model: string;
+    promptVersion: string;
+    contentKind: "article" | "github" | "other";
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+  },
+  null
+> = makeFunctionReference(
+  "links:setSummaryRunning"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    model: string;
+    promptVersion: string;
+    contentKind: "article" | "github" | "other";
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+  },
+  null
+>;
+
+const setSummarySuccess: FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    contentKind: "article" | "github" | "other";
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+    tldr: string;
+    worthReading: "yes" | "maybe" | "no";
+    worthReadingReason: string;
+    credibility: "high" | "medium" | "low" | "unknown";
+    credibilityReason: string;
+    longSummary?: string;
+  },
+  null
+> = makeFunctionReference(
+  "links:setSummarySuccess"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    contentKind: "article" | "github" | "other";
+    extractedTitle?: string;
+    extractedTitleSource?: "h1" | "og" | "twitter" | "title" | "llm";
+    tldr: string;
+    worthReading: "yes" | "maybe" | "no";
+    worthReadingReason: string;
+    credibility: "high" | "medium" | "low" | "unknown";
+    credibilityReason: string;
+    longSummary?: string;
+  },
+  null
+>;
+
+const setSummaryFailed: FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    stage: "fetch" | "extract" | "llm" | "parse";
+    message: string;
+  },
+  null
+> = makeFunctionReference(
+  "links:setSummaryFailed"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  {
+    linkId: GenericId<"links">;
+    stage: "fetch" | "extract" | "llm" | "parse";
+    message: string;
+  },
+  null
+>;
+
 function withMockFetch(impl: typeof fetch) {
   const original = globalThis.fetch;
   vi.stubGlobal("fetch", impl);
@@ -1349,4 +1449,220 @@ test("save skips Raindrop when sync disabled", async () => {
   const link = await t.run((ctx) => ctx.db.get(linkId));
   expect(link?.status).toBe("saved");
   expect(link?.raindropId).toBeUndefined();
+});
+
+test("setSummaryPending clears errors and increments attempt count", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+      summaryAttemptCount: 2,
+      summaryErrorMessage: "Old error",
+      summaryErrorStage: "llm",
+      summaryStatus: "failed",
+    })
+  );
+
+  await t.mutation(setSummaryPending, { linkId });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryStatus).toBe("pending");
+  expect(updated?.summaryAttemptCount).toBe(3);
+  expect(updated?.summaryErrorStage).toBeUndefined();
+  expect(updated?.summaryErrorMessage).toBeUndefined();
+  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
+});
+
+test("setSummaryRunning stores metadata and clears errors", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+      summaryErrorMessage: "Old error",
+      summaryErrorStage: "fetch",
+      summaryStatus: "failed",
+    })
+  );
+
+  await t.mutation(setSummaryRunning, {
+    contentKind: "article",
+    linkId,
+    model: "gemini-test",
+    promptVersion: "v0",
+    extractedTitle: "Best Title",
+    extractedTitleSource: "h1",
+  });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryStatus).toBe("running");
+  expect(updated?.summaryContentKind).toBe("article");
+  expect(updated?.summaryModel).toBe("gemini-test");
+  expect(updated?.summaryPromptVersion).toBe("v0");
+  expect(updated?.summaryExtractedTitle).toBe("Best Title");
+  expect(updated?.summaryExtractedTitleSource).toBe("h1");
+  expect(updated?.summaryErrorStage).toBeUndefined();
+  expect(updated?.summaryErrorMessage).toBeUndefined();
+  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
+});
+
+test("setSummarySuccess stores outputs and clears errors", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+      summaryErrorMessage: "Old error",
+      summaryErrorStage: "llm",
+      summaryStatus: "failed",
+    })
+  );
+
+  await t.mutation(setSummarySuccess, {
+    contentKind: "article",
+    linkId,
+    credibility: "high",
+    credibilityReason: "Good sourcing",
+    extractedTitle: "Best Title",
+    extractedTitleSource: "h1",
+    longSummary: "Long summary here",
+    tldr: "TL;DR here",
+    worthReading: "yes",
+    worthReadingReason: "Useful takeaways",
+  });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryStatus).toBe("success");
+  expect(updated?.summaryContentKind).toBe("article");
+  expect(updated?.summaryExtractedTitle).toBe("Best Title");
+  expect(updated?.summaryExtractedTitleSource).toBe("h1");
+  expect(updated?.summaryTldr).toBe("TL;DR here");
+  expect(updated?.summaryWorthReading).toBe("yes");
+  expect(updated?.summaryWorthReadingReason).toBe("Useful takeaways");
+  expect(updated?.summaryCredibility).toBe("high");
+  expect(updated?.summaryCredibilityReason).toBe("Good sourcing");
+  expect(updated?.summaryLongSummary).toBe("Long summary here");
+  expect(updated?.summaryErrorStage).toBeUndefined();
+  expect(updated?.summaryErrorMessage).toBeUndefined();
+  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
+});
+
+test("setSummaryFailed stores error stage/message", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Saved Link",
+      url: "https://example.com/saved",
+      summaryStatus: "running",
+    })
+  );
+
+  await t.mutation(setSummaryFailed, {
+    linkId,
+    stage: "extract",
+    message: "Could not extract content",
+  });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryStatus).toBe("failed");
+  expect(updated?.summaryErrorStage).toBe("extract");
+  expect(updated?.summaryErrorMessage).toBe("Could not extract content");
+  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
 });
