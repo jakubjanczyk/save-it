@@ -36,6 +36,7 @@ import type { BrowseDeckController } from "./use-browse-deck-controller";
 
 export function BrowseDeck(props: {
   controller: BrowseDeckController;
+  onRetrySummary?: () => Promise<void>;
   onSendToRaindrop?: () => void;
   showSendToRaindrop: boolean;
 }) {
@@ -244,6 +245,7 @@ export function BrowseDeck(props: {
               item={activeItem}
               onArchive={props.controller.handlers.archiveCurrent}
               onFavorite={props.controller.handlers.favoriteCurrent}
+              onRetrySummary={props.onRetrySummary}
               onSendToRaindrop={props.onSendToRaindrop}
               showSendToRaindrop={props.showSendToRaindrop}
             >

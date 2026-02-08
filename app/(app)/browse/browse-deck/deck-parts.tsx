@@ -20,6 +20,7 @@ export function DeckCardFrame(props: {
   item: SavedLinkItem;
   onArchive: () => void;
   onFavorite: () => void;
+  onRetrySummary?: () => Promise<void>;
   onSendToRaindrop?: () => void;
   showSendToRaindrop: boolean;
 }) {
@@ -31,6 +32,7 @@ export function DeckCardFrame(props: {
           item={props.item}
           onArchive={props.onArchive}
           onFavorite={props.onFavorite}
+          onRetrySummary={props.onRetrySummary}
           onSendToRaindrop={props.onSendToRaindrop}
           showSendToRaindrop={props.showSendToRaindrop}
         />
@@ -63,6 +65,7 @@ function DeckPeekCard(props: {
         item={props.item}
         onArchive={() => undefined}
         onFavorite={() => undefined}
+        onRetrySummary={undefined}
         showSendToRaindrop={false}
       />
     </motion.div>
@@ -169,6 +172,7 @@ export function DeckDismissingUnderlay(props: {
         item={props.shownItem}
         onArchive={() => undefined}
         onFavorite={() => undefined}
+        onRetrySummary={undefined}
         showSendToRaindrop={false}
       />
     </div>

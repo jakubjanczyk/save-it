@@ -7,6 +7,7 @@ import type { SavedLinkItem } from "./convex-refs";
 
 const NEXT_PAGE_REGEX = /next page/i;
 const PREVIOUS_REGEX = /previous/i;
+const SUMMARY_REGEX = /summary/i;
 
 function createMockItem(
   id: string,
@@ -46,6 +47,27 @@ test("renders list of links", () => {
   expect(screen.getByText("Link 1")).toBeInTheDocument();
   expect(screen.getByText("Link 2")).toBeInTheDocument();
   expect(screen.getByText("Link 3")).toBeInTheDocument();
+});
+
+test("shows Summary button for each row", () => {
+  const items = [createMockItem("1"), createMockItem("2"), createMockItem("3")];
+
+  render(
+    <BrowseList
+      continueCursor={null}
+      isDone={true}
+      items={items}
+      loading={false}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      onLoadMore={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  expect(screen.getAllByRole("button", { name: SUMMARY_REGEX })).toHaveLength(
+    items.length
+  );
 });
 
 test("shows empty state when no links", () => {

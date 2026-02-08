@@ -8,6 +8,7 @@ import type { SavedLinkItem } from "./convex-refs";
 const ARCHIVE_REGEX = /archive/i;
 const FAVORITE_REGEX = /favorite/i;
 const FAVORITED_REGEX = /favorited/i;
+const SUMMARY_REGEX = /summary/i;
 const SEND_TO_RAINDROP_REGEX = /send to raindrop/i;
 
 function createMockItem(overrides: Partial<SavedLinkItem> = {}): SavedLinkItem {
@@ -42,6 +43,23 @@ test("renders link title", () => {
   );
 
   expect(screen.getByText("My Test Title")).toBeInTheDocument();
+});
+
+test("shows Summary button", () => {
+  const item = createMockItem();
+
+  render(
+    <BrowseCard
+      item={item}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  expect(
+    screen.getByRole("button", { name: SUMMARY_REGEX })
+  ).toBeInTheDocument();
 });
 
 test("calls onArchive when Archive clicked", async () => {

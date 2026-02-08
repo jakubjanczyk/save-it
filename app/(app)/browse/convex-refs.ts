@@ -65,6 +65,13 @@ export const sendToRaindrop: FunctionReference<
   { raindropId: string }
 > = makeFunctionReference("links:sendToRaindrop");
 
+export const retrySummary: FunctionReference<
+  "action",
+  "public",
+  { linkId: GenericId<"links"> },
+  null
+> = makeFunctionReference("links:retrySummary");
+
 export const getSetting: FunctionReference<
   "query",
   "public",

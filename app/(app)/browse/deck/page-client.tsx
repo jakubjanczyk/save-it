@@ -18,6 +18,7 @@ import { BrowseShortcuts } from "../browse-shortcuts";
 import {
   archiveLink,
   getSetting,
+  retrySummary,
   type SavedLinkItem,
   sendToRaindrop,
   toggleFavoriteAction,
@@ -35,6 +36,7 @@ export function BrowseDeckPageClient() {
   const archive = useAction(archiveLink);
   const toggleFavorite = useAction(toggleFavoriteAction);
   const sendToRaindropAction = useAction(sendToRaindrop);
+  const retrySummaryAction = useAction(retrySummary);
 
   const storedSyncEnabled = useQuery(getSetting, {
     key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
@@ -92,6 +94,23 @@ export function BrowseDeckPageClient() {
     }
   };
 
+  const handleRetrySummary = async (item: SavedLinkItem) => {
+    saved.updateItem(item.id, {
+      summaryErrorMessage: undefined,
+      summaryErrorStage: undefined,
+      summaryStatus: "pending",
+      summaryUpdatedAt: Date.now(),
+    });
+
+    try {
+      await retrySummaryAction({ linkId: item.id });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to retry summary"
+      );
+    }
+  };
+
   if (saved.initialLoading) {
     return <BrowseLoading />;
   }
@@ -140,6 +159,7 @@ export function BrowseDeckPageClient() {
         {activeItem ? (
           <BrowseDeck
             controller={controller}
+            onRetrySummary={() => handleRetrySummary(activeItem)}
             onSendToRaindrop={
               syncEnabled && !activeItem.raindropId
                 ? () => handleSendToRaindrop(activeItem)

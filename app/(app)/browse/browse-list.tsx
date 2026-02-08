@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { BrowseFavoriteHeart } from "./browse-favorite-heart";
+import { BrowseSummaryDialog } from "./browse-summary-dialog";
 import type { SavedLinkItem } from "./convex-refs";
 
 export function BrowseList(props: {
@@ -19,6 +20,7 @@ export function BrowseList(props: {
   onFavorite: (item: SavedLinkItem) => void;
   onLoadMore: () => void;
   onPreviousPage?: () => void;
+  onRetrySummary?: (item: SavedLinkItem) => Promise<void>;
   onSendToRaindrop?: (item: SavedLinkItem) => void;
   showSendToRaindrop: boolean;
 }) {
@@ -65,6 +67,15 @@ export function BrowseList(props: {
                   itemId={item.id}
                 />
               </Button>
+              <BrowseSummaryDialog
+                item={item}
+                onRetry={
+                  props.onRetrySummary
+                    ? () => props.onRetrySummary!(item)
+                    : undefined
+                }
+                triggerVariant="ghost"
+              />
               {props.showSendToRaindrop &&
                 !item.raindropId &&
                 props.onSendToRaindrop && (

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { BrowseFavoriteHeart } from "./browse-favorite-heart";
+import { BrowseSummaryDialog } from "./browse-summary-dialog";
 import type { SavedLinkItem } from "./convex-refs";
 
 export function BrowseCard(props: {
@@ -13,6 +14,7 @@ export function BrowseCard(props: {
   item: SavedLinkItem;
   onArchive: () => void;
   onFavorite: () => void;
+  onRetrySummary?: () => Promise<void>;
   onSendToRaindrop?: () => void;
   showSendToRaindrop: boolean;
 }) {
@@ -75,12 +77,19 @@ export function BrowseCard(props: {
               Send to Raindrop
             </Button>
           )}
-        <Button asChild className="ml-auto" size="sm" variant="outline">
-          <a href={item.url} rel="noreferrer noopener" target="_blank">
-            <ExternalLink className="mr-1 h-4 w-4" />
-            Open
-          </a>
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <BrowseSummaryDialog
+            disabled={disabled}
+            item={item}
+            onRetry={props.onRetrySummary}
+          />
+          <Button asChild size="sm" variant="outline">
+            <a href={item.url} rel="noreferrer noopener" target="_blank">
+              <ExternalLink className="mr-1 h-4 w-4" />
+              Open
+            </a>
+          </Button>
+        </div>
       </div>
     </div>
   );
