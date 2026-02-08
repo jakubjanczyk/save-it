@@ -217,6 +217,29 @@ function withMockFetch(impl: typeof fetch) {
   };
 }
 
+async function settleScheduledFunctions(t: ReturnType<typeof convexTest>) {
+  for (let i = 0; i < 50; i++) {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    await t.finishInProgressScheduledFunctions();
+
+    const jobs = (await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    )) as Array<{ state: { kind: string } }>;
+
+    const unsettled = jobs.filter(
+      (job) => job.state.kind === "pending" || job.state.kind === "inProgress"
+    );
+    if (unsettled.length === 0) {
+      return;
+    }
+  }
+
+  throw new Error("Timed out waiting for scheduled functions to settle");
+}
+
 test("listByEmail returns empty array when there are no links", async () => {
   const t = convexTest(schema, modules);
 
@@ -390,6 +413,7 @@ test("save returns the created raindropId", async () => {
   try {
     const result = await t.action(save, { linkId });
     expect(result.raindropId).toBe("777");
+    await settleScheduledFunctions(t);
   } finally {
     restoreFetch();
   }
@@ -455,12 +479,129 @@ test("save updates link status to saved", async () => {
 
   try {
     await t.action(save, { linkId });
+    await settleScheduledFunctions(t);
   } finally {
     restoreFetch();
   }
 
   const saved = await t.run((ctx) => ctx.db.get(linkId));
   expect(saved?.status).toBe("saved");
+});
+
+test("save sets summaryStatus pending and queues generateSummary", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      status: "pending",
+      title: "Title",
+      url: "https://example.com/a",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      createdAt: Date.now(),
+      key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+      updatedAt: Date.now(),
+      value: "false",
+    })
+  );
+
+  await t.action(save, { linkId });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.status).toBe("saved");
+  expect(updated?.summaryStatus).toBe("pending");
+  expect(updated?.summaryAttemptCount).toBe(1);
+
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect()
+  );
+  expect(
+    jobs.filter((job) => job.name === "links:generateSummary")
+  ).toHaveLength(1);
+
+  await settleScheduledFunctions(t);
+});
+
+test("save does not re-queue summaries for already-saved links", async () => {
+  const t = convexTest(schema, modules);
+
+  const senderId = await t.run((ctx) =>
+    ctx.db.insert("senders", {
+      createdAt: Date.now(),
+      email: "newsletter@example.com",
+    })
+  );
+
+  const emailId = await t.run((ctx) =>
+    ctx.db.insert("emails", {
+      extractionError: false,
+      from: "a@example.com",
+      gmailId: "g1",
+      markedAsRead: false,
+      receivedAt: Date.now(),
+      senderId,
+      subject: "Hello",
+    })
+  );
+
+  const linkId = await t.run((ctx) =>
+    ctx.db.insert("links", {
+      description: "Desc",
+      emailId,
+      savedAt: Date.now(),
+      status: "saved",
+      title: "Title",
+      url: "https://example.com/a",
+      summaryAttemptCount: 5,
+      summaryStatus: "success",
+    })
+  );
+
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      createdAt: Date.now(),
+      key: RAINDROP_SYNC_ENABLED_SETTING_KEY,
+      updatedAt: Date.now(),
+      value: "false",
+    })
+  );
+
+  await t.action(save, { linkId });
+
+  const updated = await t.run((ctx) => ctx.db.get(linkId));
+  expect(updated?.summaryAttemptCount).toBe(5);
+  expect(updated?.summaryStatus).toBe("success");
+
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect()
+  );
+  expect(
+    jobs.filter((job) => job.name === "links:generateSummary")
+  ).toHaveLength(0);
 });
 
 test("save throws when Raindrop is not connected", async () => {
@@ -899,6 +1040,7 @@ test("save marks email as read when it saves the last pending link", async () =>
 
   try {
     await t.action(save, { linkId });
+    await settleScheduledFunctions(t);
   } finally {
     restoreFetch();
   }
@@ -1442,6 +1584,7 @@ test("save skips Raindrop when sync disabled", async () => {
     const result = await t.action(save, { linkId });
     expect(result.raindropId).toBe(null);
     expect(raindropCalled).toBe(false);
+    await settleScheduledFunctions(t);
   } finally {
     restoreFetch();
   }

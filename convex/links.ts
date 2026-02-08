@@ -19,6 +19,7 @@ import {
 import {
   type ActionCtx,
   action,
+  internalAction,
   internalMutation,
   internalQuery,
   type QueryCtx,
@@ -91,6 +92,24 @@ const markPendingRef = makeFunctionReference(
   "links:markPending"
 ) as unknown as FunctionReference<
   "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+>;
+
+const setSummaryPendingRef = makeFunctionReference(
+  "links:setSummaryPending"
+) as unknown as FunctionReference<
+  "mutation",
+  "internal",
+  { linkId: GenericId<"links"> },
+  null
+>;
+
+const generateSummaryRef = makeFunctionReference(
+  "links:generateSummary"
+) as unknown as FunctionReference<
+  "action",
   "internal",
   { linkId: GenericId<"links"> },
   null
@@ -442,6 +461,13 @@ export const hasPendingLinksByEmail = internalQuery({
   },
 });
 
+export const generateSummary = internalAction({
+  args: { linkId: v.id("links") },
+  handler: () => {
+    return null;
+  },
+});
+
 export const save = action({
   args: { linkId: v.id("links") },
   handler: async (ctx, args) => {
@@ -478,6 +504,13 @@ export const save = action({
         });
         throw error;
       }
+
+      await ctx.runMutation(setSummaryPendingRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
+      await ctx.scheduler.runAfter(0, generateSummaryRef, {
+        linkId: args.linkId as GenericId<"links">,
+      });
 
       await finalizeEmailIfDone(ctx, link.emailId);
       return { raindropId: null };
@@ -516,6 +549,13 @@ export const save = action({
       });
       throw error;
     }
+
+    await ctx.runMutation(setSummaryPendingRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
+    await ctx.scheduler.runAfter(0, generateSummaryRef, {
+      linkId: args.linkId as GenericId<"links">,
+    });
 
     await finalizeEmailIfDone(ctx, link.emailId);
 
