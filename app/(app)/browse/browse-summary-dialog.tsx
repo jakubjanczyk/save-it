@@ -215,7 +215,7 @@ export function BrowseSummaryDialog(props: {
           Summary
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[95dvh] overflow-y-auto sm:max-h-[70dvh]">
         <DialogHeader>
           <DialogTitle>Summary</DialogTitle>
           <DialogDescription className="break-all">

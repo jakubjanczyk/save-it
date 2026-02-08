@@ -77,6 +77,9 @@ test("shows Generating state in Summary modal when pending", async () => {
 
   await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
 
+  expect(screen.getByRole("dialog")).toHaveClass("max-h-[95dvh]");
+  expect(screen.getByRole("dialog")).toHaveClass("overflow-y-auto");
+  expect(screen.getByRole("dialog")).toHaveClass("sm:max-h-[70dvh]");
   expect(screen.getByText("Generating…")).toBeInTheDocument();
 });
 
