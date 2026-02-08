@@ -130,10 +130,6 @@ test("generateSummary stores article summary outputs", async () => {
   generateTextMock.mockResolvedValue({
     output: {
       tldr: "TL;DR",
-      worthReading: "yes",
-      worthReadingReason: "Reason",
-      credibility: "high",
-      credibilityReason: "Cred reason",
       longSummary: "Long summary",
     },
   });
@@ -147,8 +143,6 @@ test("generateSummary stores article summary outputs", async () => {
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("success");
   expect(updated?.summaryTldr).toBe("TL;DR");
-  expect(updated?.summaryWorthReading).toBe("yes");
-  expect(updated?.summaryCredibility).toBe("high");
   expect(updated?.summaryLongSummary).toBe("Long summary");
 });
 
@@ -202,10 +196,6 @@ test("generateSummary stores github summary without longSummary", async () => {
   generateTextMock.mockResolvedValue({
     output: {
       tldr: "TL;DR",
-      worthReading: "maybe",
-      worthReadingReason: "Reason",
-      credibility: "unknown",
-      credibilityReason: "Cred reason",
     },
   });
 
@@ -272,10 +262,6 @@ test("retrySummary increments attempt count and re-queues generateSummary", asyn
   generateTextMock.mockResolvedValue({
     output: {
       tldr: "TL;DR",
-      worthReading: "yes",
-      worthReadingReason: "Reason",
-      credibility: "high",
-      credibilityReason: "Cred reason",
       longSummary: "Long summary",
     },
   });

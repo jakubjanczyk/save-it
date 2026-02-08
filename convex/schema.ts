@@ -54,19 +54,6 @@ export default defineSchema({
     ),
     summaryExtractedTitle: v.optional(v.string()),
     summaryTldr: v.optional(v.string()),
-    summaryWorthReading: v.optional(
-      v.union(v.literal("yes"), v.literal("maybe"), v.literal("no"))
-    ),
-    summaryWorthReadingReason: v.optional(v.string()),
-    summaryCredibility: v.optional(
-      v.union(
-        v.literal("high"),
-        v.literal("medium"),
-        v.literal("low"),
-        v.literal("unknown")
-      )
-    ),
-    summaryCredibilityReason: v.optional(v.string()),
     summaryLongSummary: v.optional(v.string()),
     summaryModel: v.optional(v.string()),
     summaryPromptVersion: v.optional(v.string()),

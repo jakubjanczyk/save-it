@@ -110,13 +110,9 @@ test("shows error message and Retry in Summary modal when failed", async () => {
 test("renders summary content in Summary modal when success", async () => {
   const user = userEvent.setup();
   const item = createMockItem({
-    summaryCredibility: "medium",
-    summaryCredibilityReason: "Some claims are not backed by sources.",
     summaryLongSummary: "Long summary content",
     summaryStatus: "success",
     summaryTldr: "TLDR content",
-    summaryWorthReading: "maybe",
-    summaryWorthReadingReason: "Interesting but not urgent.",
   });
 
   render(
@@ -132,12 +128,6 @@ test("renders summary content in Summary modal when success", async () => {
 
   expect(screen.getByText("TL;DR")).toBeInTheDocument();
   expect(screen.getByText("TLDR content")).toBeInTheDocument();
-  expect(screen.getByText("Worth reading: Maybe")).toBeInTheDocument();
-  expect(screen.getByText("Interesting but not urgent.")).toBeInTheDocument();
-  expect(screen.getByText("Credibility: Medium")).toBeInTheDocument();
-  expect(
-    screen.getByText("Some claims are not backed by sources.")
-  ).toBeInTheDocument();
   expect(screen.getByText("Long summary")).toBeInTheDocument();
   expect(screen.getByText("Long summary content")).toBeInTheDocument();
 });
@@ -145,12 +135,8 @@ test("renders summary content in Summary modal when success", async () => {
 test("hides long summary section when not present (e.g. GitHub)", async () => {
   const user = userEvent.setup();
   const item = createMockItem({
-    summaryCredibility: "unknown",
-    summaryCredibilityReason: "No clear signals.",
     summaryStatus: "success",
     summaryTldr: "Repo summary",
-    summaryWorthReading: "yes",
-    summaryWorthReadingReason: "Looks useful.",
   });
 
   render(

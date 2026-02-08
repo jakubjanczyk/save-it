@@ -5,28 +5,11 @@ import { ZodError, z } from "zod";
 import { createGeminiModel, type Env } from "../ai";
 import type { LinkContentKind } from "./content-kind";
 
-export const LINK_SUMMARY_PROMPT_VERSION = "v0";
-
-const worthReadingSchema = z.union([
-  z.literal("yes"),
-  z.literal("maybe"),
-  z.literal("no"),
-]);
-
-const credibilitySchema = z.union([
-  z.literal("high"),
-  z.literal("medium"),
-  z.literal("low"),
-  z.literal("unknown"),
-]);
+export const LINK_SUMMARY_PROMPT_VERSION = "v1";
 
 const baseSchema = z
   .object({
     tldr: z.string(),
-    worthReading: worthReadingSchema,
-    worthReadingReason: z.string(),
-    credibility: credibilitySchema,
-    credibilityReason: z.string(),
   })
   .strict();
 
@@ -83,20 +66,12 @@ JSON schema to satisfy:
 For articles:
 {
   "tldr": string, // 2-4 sentences
-  "worthReading": "yes" | "maybe" | "no",
-  "worthReadingReason": string, // 1-3 concrete reasons
-  "credibility": "high" | "medium" | "low" | "unknown",
-  "credibilityReason": string,
   "longSummary": string // structured, information-preserving summary
 }
 
 For non-articles (github/other):
 {
-  "tldr": string,
-  "worthReading": "yes" | "maybe" | "no",
-  "worthReadingReason": string,
-  "credibility": "high" | "medium" | "low" | "unknown",
-  "credibilityReason": string
+  "tldr": string
 }
 `;
 }

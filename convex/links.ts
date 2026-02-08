@@ -150,14 +150,10 @@ const setSummarySuccessRef = makeFunctionReference(
   "mutation",
   "internal",
   {
-    credibility: "high" | "medium" | "low" | "unknown";
-    credibilityReason: string;
     extractedTitle?: string;
     linkId: GenericId<"links">;
     longSummary?: string;
     tldr: string;
-    worthReading: "yes" | "maybe" | "no";
-    worthReadingReason: string;
   },
   null
 >;
@@ -401,19 +397,6 @@ export const setSummarySuccess = internalMutation({
     linkId: v.id("links"),
     extractedTitle: v.optional(v.string()),
     tldr: v.string(),
-    worthReading: v.union(
-      v.literal("yes"),
-      v.literal("maybe"),
-      v.literal("no")
-    ),
-    worthReadingReason: v.string(),
-    credibility: v.union(
-      v.literal("high"),
-      v.literal("medium"),
-      v.literal("low"),
-      v.literal("unknown")
-    ),
-    credibilityReason: v.string(),
     longSummary: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -423,8 +406,6 @@ export const setSummarySuccess = internalMutation({
     }
 
     await ctx.db.patch(args.linkId, {
-      summaryCredibility: args.credibility,
-      summaryCredibilityReason: args.credibilityReason,
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryExtractedTitle: args.extractedTitle,
@@ -432,8 +413,6 @@ export const setSummarySuccess = internalMutation({
       summaryStatus: "success",
       summaryTldr: args.tldr,
       summaryUpdatedAt: Date.now(),
-      summaryWorthReading: args.worthReading,
-      summaryWorthReadingReason: args.worthReadingReason,
     });
 
     return null;
@@ -620,8 +599,6 @@ export const generateSummary = internalAction({
       );
 
       await ctx.runMutation(setSummarySuccessRef, {
-        credibility: output.credibility,
-        credibilityReason: output.credibilityReason,
         extractedTitle: extractedTitle?.title,
         linkId: args.linkId as GenericId<"links">,
         longSummary:
@@ -629,8 +606,6 @@ export const generateSummary = internalAction({
             ? output.longSummary
             : undefined,
         tldr: output.tldr,
-        worthReading: output.worthReading,
-        worthReadingReason: output.worthReadingReason,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "LLM failed";
@@ -908,8 +883,6 @@ export const listSaved = query({
       raindropId?: string;
       savedAt?: number;
       summaryAttemptCount?: number;
-      summaryCredibility?: "high" | "medium" | "low" | "unknown";
-      summaryCredibilityReason?: string;
       summaryErrorMessage?: string;
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
@@ -919,8 +892,6 @@ export const listSaved = query({
       summaryStatus?: "pending" | "running" | "success" | "failed";
       summaryTldr?: string;
       summaryUpdatedAt?: number;
-      summaryWorthReading?: "yes" | "maybe" | "no";
-      summaryWorthReadingReason?: string;
       title: string;
       url: string;
     }> = [];
@@ -934,8 +905,6 @@ export const listSaved = query({
         raindropId: link.raindropId,
         savedAt: link.savedAt,
         summaryAttemptCount: link.summaryAttemptCount,
-        summaryCredibility: link.summaryCredibility,
-        summaryCredibilityReason: link.summaryCredibilityReason,
         summaryErrorMessage: link.summaryErrorMessage,
         summaryErrorStage: link.summaryErrorStage,
         summaryExtractedTitle: link.summaryExtractedTitle,
@@ -945,8 +914,6 @@ export const listSaved = query({
         summaryStatus: link.summaryStatus,
         summaryTldr: link.summaryTldr,
         summaryUpdatedAt: link.summaryUpdatedAt,
-        summaryWorthReading: link.summaryWorthReading,
-        summaryWorthReadingReason: link.summaryWorthReadingReason,
         title: link.title,
         url: link.url,
       });

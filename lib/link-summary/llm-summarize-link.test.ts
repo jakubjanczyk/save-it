@@ -10,28 +10,16 @@ describe("link summary schemas", () => {
     expect(() =>
       articleLinkSummarySchema.parse({
         tldr: "TL;DR",
-        worthReading: "yes",
-        worthReadingReason: "Reason",
-        credibility: "high",
-        credibilityReason: "Reason",
       })
     ).toThrow();
 
     expect(
       articleLinkSummarySchema.parse({
         tldr: "TL;DR",
-        worthReading: "yes",
-        worthReadingReason: "Reason",
-        credibility: "high",
-        credibilityReason: "Reason",
         longSummary: "Long summary",
       })
     ).toEqual({
       tldr: "TL;DR",
-      worthReading: "yes",
-      worthReadingReason: "Reason",
-      credibility: "high",
-      credibilityReason: "Reason",
       longSummary: "Long summary",
     });
   });
@@ -40,10 +28,6 @@ describe("link summary schemas", () => {
     expect(() =>
       githubLinkSummarySchema.parse({
         tldr: "TL;DR",
-        worthReading: "maybe",
-        worthReadingReason: "Reason",
-        credibility: "unknown",
-        credibilityReason: "Reason",
         longSummary: "Should not be here",
       })
     ).toThrow();

@@ -76,8 +76,6 @@ const listSaved: FunctionReference<
       isFavorite: boolean;
       savedAt?: number;
       summaryAttemptCount?: number;
-      summaryCredibility?: "high" | "medium" | "low" | "unknown";
-      summaryCredibilityReason?: string;
       summaryErrorMessage?: string;
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
@@ -87,8 +85,6 @@ const listSaved: FunctionReference<
       summaryStatus?: "pending" | "running" | "success" | "failed";
       summaryTldr?: string;
       summaryUpdatedAt?: number;
-      summaryWorthReading?: "yes" | "maybe" | "no";
-      summaryWorthReadingReason?: string;
     }>;
   }
 > = makeFunctionReference("links:listSaved");
@@ -152,10 +148,6 @@ const setSummarySuccess: FunctionReference<
     linkId: GenericId<"links">;
     extractedTitle?: string;
     tldr: string;
-    worthReading: "yes" | "maybe" | "no";
-    worthReadingReason: string;
-    credibility: "high" | "medium" | "low" | "unknown";
-    credibilityReason: string;
     longSummary?: string;
   },
   null
@@ -168,10 +160,6 @@ const setSummarySuccess: FunctionReference<
     linkId: GenericId<"links">;
     extractedTitle?: string;
     tldr: string;
-    worthReading: "yes" | "maybe" | "no";
-    worthReadingReason: string;
-    credibility: "high" | "medium" | "low" | "unknown";
-    credibilityReason: string;
     longSummary?: string;
   },
   null
@@ -1360,17 +1348,13 @@ test("listSaved includes summary fields when present", async () => {
       title: "Saved Link",
       url: "https://example.com/saved",
       summaryAttemptCount: 2,
-      summaryCredibility: "high",
-      summaryCredibilityReason: "Has citations and author bio",
       summaryExtractedTitle: "Best Title",
       summaryLongSummary: "Long summary here",
       summaryModel: "gemini-test",
-      summaryPromptVersion: "v0",
+      summaryPromptVersion: "v1",
       summaryStatus: "success",
       summaryTldr: "TL;DR here",
       summaryUpdatedAt,
-      summaryWorthReading: "yes",
-      summaryWorthReadingReason: "Useful takeaways",
     })
   );
 
@@ -1380,15 +1364,9 @@ test("listSaved includes summary fields when present", async () => {
   expect(result.items[0]?.summaryStatus).toBe("success");
   expect(result.items[0]?.summaryExtractedTitle).toBe("Best Title");
   expect(result.items[0]?.summaryTldr).toBe("TL;DR here");
-  expect(result.items[0]?.summaryWorthReading).toBe("yes");
-  expect(result.items[0]?.summaryWorthReadingReason).toBe("Useful takeaways");
-  expect(result.items[0]?.summaryCredibility).toBe("high");
-  expect(result.items[0]?.summaryCredibilityReason).toBe(
-    "Has citations and author bio"
-  );
   expect(result.items[0]?.summaryLongSummary).toBe("Long summary here");
   expect(result.items[0]?.summaryModel).toBe("gemini-test");
-  expect(result.items[0]?.summaryPromptVersion).toBe("v0");
+  expect(result.items[0]?.summaryPromptVersion).toBe("v1");
   expect(result.items[0]?.summaryAttemptCount).toBe(2);
   expect(result.items[0]?.summaryUpdatedAt).toBe(summaryUpdatedAt);
 });
@@ -1764,14 +1742,14 @@ test("setSummaryRunning stores metadata and clears errors", async () => {
   await t.mutation(setSummaryRunning, {
     linkId,
     model: "gemini-test",
-    promptVersion: "v0",
+    promptVersion: "v1",
     extractedTitle: "Best Title",
   });
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("running");
   expect(updated?.summaryModel).toBe("gemini-test");
-  expect(updated?.summaryPromptVersion).toBe("v0");
+  expect(updated?.summaryPromptVersion).toBe("v1");
   expect(updated?.summaryExtractedTitle).toBe("Best Title");
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();
@@ -1816,23 +1794,15 @@ test("setSummarySuccess stores outputs and clears errors", async () => {
 
   await t.mutation(setSummarySuccess, {
     linkId,
-    credibility: "high",
-    credibilityReason: "Good sourcing",
     extractedTitle: "Best Title",
     longSummary: "Long summary here",
     tldr: "TL;DR here",
-    worthReading: "yes",
-    worthReadingReason: "Useful takeaways",
   });
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("success");
   expect(updated?.summaryExtractedTitle).toBe("Best Title");
   expect(updated?.summaryTldr).toBe("TL;DR here");
-  expect(updated?.summaryWorthReading).toBe("yes");
-  expect(updated?.summaryWorthReadingReason).toBe("Useful takeaways");
-  expect(updated?.summaryCredibility).toBe("high");
-  expect(updated?.summaryCredibilityReason).toBe("Good sourcing");
   expect(updated?.summaryLongSummary).toBe("Long summary here");
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();

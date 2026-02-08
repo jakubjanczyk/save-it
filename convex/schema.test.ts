@@ -131,19 +131,15 @@ describe("convex schema", () => {
         title: "Example",
         url: "https://example.com",
         summaryAttemptCount: 1,
-        summaryCredibility: "medium",
-        summaryCredibilityReason: "Reasonable sourcing",
         summaryErrorMessage: "Temporary failure",
         summaryErrorStage: "llm",
         summaryExtractedTitle: "Extracted title",
         summaryLongSummary: "Long summary",
         summaryModel: "gemini-test",
-        summaryPromptVersion: "v0",
         summaryStatus: "failed",
         summaryTldr: "TL;DR",
         summaryUpdatedAt: Date.now(),
-        summaryWorthReading: "maybe",
-        summaryWorthReadingReason: "Looks interesting",
+        summaryPromptVersion: "v1",
       })
     );
   });

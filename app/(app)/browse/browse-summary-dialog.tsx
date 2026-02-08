@@ -20,13 +20,6 @@ import type { SavedLinkItem } from "./convex-refs";
 
 type SummaryStatus = NonNullable<SavedLinkItem["summaryStatus"]>;
 
-function formatVerdict(value: string | undefined) {
-  if (!value) {
-    return "Unknown";
-  }
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 function SummaryGenerating() {
   return <div className="text-sm">Generating…</div>;
 }
@@ -96,27 +89,6 @@ function SummarySuccess(props: { item: SavedLinkItem }) {
         <div className="font-medium text-sm">TL;DR</div>
         <div className="whitespace-pre-wrap text-sm">
           {props.item.summaryTldr ?? "—"}
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="grid gap-3">
-        <div className="grid gap-1">
-          <div className="font-medium text-sm">
-            Worth reading: {formatVerdict(props.item.summaryWorthReading)}
-          </div>
-          <div className="whitespace-pre-wrap text-sm">
-            {props.item.summaryWorthReadingReason ?? "—"}
-          </div>
-        </div>
-        <div className="grid gap-1">
-          <div className="font-medium text-sm">
-            Credibility: {formatVerdict(props.item.summaryCredibility)}
-          </div>
-          <div className="whitespace-pre-wrap text-sm">
-            {props.item.summaryCredibilityReason ?? "—"}
-          </div>
         </div>
       </div>
 

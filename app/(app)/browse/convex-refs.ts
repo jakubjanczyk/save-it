@@ -10,8 +10,6 @@ export interface SavedLinkItem {
   raindropId?: string;
   savedAt?: number;
   summaryAttemptCount?: number;
-  summaryCredibility?: "high" | "medium" | "low" | "unknown";
-  summaryCredibilityReason?: string;
   summaryErrorMessage?: string;
   summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
   summaryExtractedTitle?: string;
@@ -21,8 +19,6 @@ export interface SavedLinkItem {
   summaryStatus?: "pending" | "running" | "success" | "failed";
   summaryTldr?: string;
   summaryUpdatedAt?: number;
-  summaryWorthReading?: "yes" | "maybe" | "no";
-  summaryWorthReadingReason?: string;
   title: string;
   url: string;
 }
