@@ -5,11 +5,9 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import type { DeckNavigating } from "../deck/browse-deck-state";
 import {
   CARD_GAP_PX,
-  clamp,
   NAV_DURATION_S,
   PEEK_OPACITY,
   PEEK_SCALE,
-  VERTICAL_SWIPE_THRESHOLD_PX,
 } from "./deck-constants";
 import type { DeckMotion } from "./deck-motion";
 import { resetNavigationMotion } from "./reset-navigation-motion";
@@ -36,11 +34,8 @@ export function useDeckNavigateAnimation(params: {
 
     const height = params.heightRef.current + CARD_GAP_PX;
     const targetY = params.navigating.direction === "next" ? -height : height;
-    const initialY = clamp(
-      params.navigating.startY,
-      -VERTICAL_SWIPE_THRESHOLD_PX,
-      VERTICAL_SWIPE_THRESHOLD_PX
-    );
+    const currentY = params.motion.y.get();
+    const initialY = currentY;
 
     params.motion.x.set(0);
     params.motion.y.set(initialY);
