@@ -44,6 +44,55 @@ export default defineSchema({
     raindropId: v.optional(v.string()),
     isFavorite: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
+    summaryStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("running"),
+        v.literal("success"),
+        v.literal("failed")
+      )
+    ),
+    summaryContentKind: v.optional(
+      v.union(v.literal("article"), v.literal("github"), v.literal("other"))
+    ),
+    summaryExtractedTitle: v.optional(v.string()),
+    summaryExtractedTitleSource: v.optional(
+      v.union(
+        v.literal("h1"),
+        v.literal("og"),
+        v.literal("twitter"),
+        v.literal("title"),
+        v.literal("llm")
+      )
+    ),
+    summaryTldr: v.optional(v.string()),
+    summaryWorthReading: v.optional(
+      v.union(v.literal("yes"), v.literal("maybe"), v.literal("no"))
+    ),
+    summaryWorthReadingReason: v.optional(v.string()),
+    summaryCredibility: v.optional(
+      v.union(
+        v.literal("high"),
+        v.literal("medium"),
+        v.literal("low"),
+        v.literal("unknown")
+      )
+    ),
+    summaryCredibilityReason: v.optional(v.string()),
+    summaryLongSummary: v.optional(v.string()),
+    summaryModel: v.optional(v.string()),
+    summaryPromptVersion: v.optional(v.string()),
+    summaryUpdatedAt: v.optional(v.number()),
+    summaryAttemptCount: v.optional(v.number()),
+    summaryErrorStage: v.optional(
+      v.union(
+        v.literal("fetch"),
+        v.literal("extract"),
+        v.literal("llm"),
+        v.literal("parse")
+      )
+    ),
+    summaryErrorMessage: v.optional(v.string()),
   })
     .index("by_emailId", ["emailId"])
     .index("by_emailId_url", ["emailId", "url"])

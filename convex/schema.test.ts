@@ -1,6 +1,9 @@
+import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
 import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.*s");
 
 describe("convex schema", () => {
   test("exports expected tables", () => {
@@ -96,5 +99,54 @@ describe("convex schema", () => {
       indexDescriptor: "by_status_startedAt",
       fields: ["status", "startedAt"],
     });
+  });
+
+  test("allows storing link summary fields", async () => {
+    const t = convexTest(schema, modules);
+
+    const senderId = await t.run((ctx) =>
+      ctx.db.insert("senders", {
+        createdAt: Date.now(),
+        email: "newsletter@example.com",
+      })
+    );
+
+    const emailId = await t.run((ctx) =>
+      ctx.db.insert("emails", {
+        extractionError: false,
+        from: "a@example.com",
+        gmailId: "g1",
+        markedAsRead: false,
+        receivedAt: Date.now(),
+        senderId,
+        subject: "Hello",
+      })
+    );
+
+    await t.run((ctx) =>
+      ctx.db.insert("links", {
+        description: "desc",
+        emailId,
+        status: "saved",
+        title: "Example",
+        url: "https://example.com",
+        summaryAttemptCount: 1,
+        summaryContentKind: "article",
+        summaryCredibility: "medium",
+        summaryCredibilityReason: "Reasonable sourcing",
+        summaryErrorMessage: "Temporary failure",
+        summaryErrorStage: "llm",
+        summaryExtractedTitle: "Extracted title",
+        summaryExtractedTitleSource: "title",
+        summaryLongSummary: "Long summary",
+        summaryModel: "gemini-test",
+        summaryPromptVersion: "v0",
+        summaryStatus: "failed",
+        summaryTldr: "TL;DR",
+        summaryUpdatedAt: Date.now(),
+        summaryWorthReading: "maybe",
+        summaryWorthReadingReason: "Looks interesting",
+      })
+    );
   });
 });
