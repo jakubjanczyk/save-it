@@ -62,6 +62,109 @@ test("shows Summary button", () => {
   ).toBeInTheDocument();
 });
 
+test("shows Generating state in Summary modal when pending", async () => {
+  const user = userEvent.setup();
+  const item = createMockItem({ summaryStatus: "pending" });
+
+  render(
+    <BrowseCard
+      item={item}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
+
+  expect(screen.getByText("Generating…")).toBeInTheDocument();
+});
+
+test("shows error message and Retry in Summary modal when failed", async () => {
+  const user = userEvent.setup();
+  const onRetrySummary = vi.fn().mockResolvedValue(undefined);
+  const item = createMockItem({
+    summaryErrorMessage: "Could not fetch HTML",
+    summaryStatus: "failed",
+  });
+
+  render(
+    <BrowseCard
+      item={item}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      onRetrySummary={onRetrySummary}
+      showSendToRaindrop={false}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
+
+  expect(screen.getByText("Could not fetch HTML")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+});
+
+test("renders summary content in Summary modal when success", async () => {
+  const user = userEvent.setup();
+  const item = createMockItem({
+    summaryCredibility: "medium",
+    summaryCredibilityReason: "Some claims are not backed by sources.",
+    summaryLongSummary: "Long summary content",
+    summaryStatus: "success",
+    summaryTldr: "TLDR content",
+    summaryWorthReading: "maybe",
+    summaryWorthReadingReason: "Interesting but not urgent.",
+  });
+
+  render(
+    <BrowseCard
+      item={item}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
+
+  expect(screen.getByText("TL;DR")).toBeInTheDocument();
+  expect(screen.getByText("TLDR content")).toBeInTheDocument();
+  expect(screen.getByText("Worth reading: Maybe")).toBeInTheDocument();
+  expect(screen.getByText("Interesting but not urgent.")).toBeInTheDocument();
+  expect(screen.getByText("Credibility: Medium")).toBeInTheDocument();
+  expect(
+    screen.getByText("Some claims are not backed by sources.")
+  ).toBeInTheDocument();
+  expect(screen.getByText("Long summary")).toBeInTheDocument();
+  expect(screen.getByText("Long summary content")).toBeInTheDocument();
+});
+
+test("hides long summary section when not present (e.g. GitHub)", async () => {
+  const user = userEvent.setup();
+  const item = createMockItem({
+    summaryContentKind: "github",
+    summaryCredibility: "unknown",
+    summaryCredibilityReason: "No clear signals.",
+    summaryStatus: "success",
+    summaryTldr: "Repo summary",
+    summaryWorthReading: "yes",
+    summaryWorthReadingReason: "Looks useful.",
+  });
+
+  render(
+    <BrowseCard
+      item={item}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
+
+  expect(screen.queryByText("Long summary")).not.toBeInTheDocument();
+});
+
 test("calls onArchive when Archive clicked", async () => {
   const user = userEvent.setup();
   const onArchive = vi.fn();

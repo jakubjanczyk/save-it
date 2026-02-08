@@ -71,7 +71,9 @@ export function BrowseList(props: {
                 item={item}
                 onRetry={
                   props.onRetrySummary
-                    ? () => props.onRetrySummary!(item)
+                    ? async () => {
+                        await props.onRetrySummary?.(item);
+                      }
                     : undefined
                 }
                 triggerVariant="ghost"

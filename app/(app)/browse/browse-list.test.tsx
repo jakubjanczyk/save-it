@@ -70,6 +70,28 @@ test("shows Summary button for each row", () => {
   );
 });
 
+test("opens Summary modal from a row", async () => {
+  const user = userEvent.setup();
+  const items = [createMockItem("1", { summaryStatus: "running" })];
+
+  render(
+    <BrowseList
+      continueCursor={null}
+      isDone={true}
+      items={items}
+      loading={false}
+      onArchive={() => undefined}
+      onFavorite={() => undefined}
+      onLoadMore={() => undefined}
+      showSendToRaindrop={false}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: SUMMARY_REGEX }));
+
+  expect(screen.getByText("Generating…")).toBeInTheDocument();
+});
+
 test("shows empty state when no links", () => {
   const { container } = render(
     <BrowseList
