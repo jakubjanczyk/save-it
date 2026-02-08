@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
+import { BrowseMarkdown } from "./browse-markdown";
 import type { SavedLinkItem } from "./convex-refs";
 
 type SummaryStatus = NonNullable<SavedLinkItem["summaryStatus"]>;
@@ -70,7 +71,8 @@ function SummarySuccess(props: { item: SavedLinkItem }) {
   const showSourceTitle =
     props.item.summaryExtractedTitle &&
     props.item.summaryExtractedTitle !== props.item.title;
-  const hasLongSummary = Boolean(props.item.summaryLongSummary);
+  const longSummary = props.item.summaryLongSummary;
+  const hasLongSummary = Boolean(longSummary);
 
   return (
     <div className="grid gap-4">
@@ -87,9 +89,11 @@ function SummarySuccess(props: { item: SavedLinkItem }) {
 
       <div className="grid gap-1">
         <div className="font-medium text-sm">TL;DR</div>
-        <div className="whitespace-pre-wrap text-sm">
-          {props.item.summaryTldr ?? "—"}
-        </div>
+        {props.item.summaryTldr ? (
+          <BrowseMarkdown markdown={props.item.summaryTldr} />
+        ) : (
+          <div className="text-muted-foreground text-sm">—</div>
+        )}
       </div>
 
       {hasLongSummary ? (
@@ -97,9 +101,7 @@ function SummarySuccess(props: { item: SavedLinkItem }) {
           <Separator />
           <div className="grid gap-1">
             <div className="font-medium text-sm">Long summary</div>
-            <div className="whitespace-pre-wrap text-sm">
-              {props.item.summaryLongSummary}
-            </div>
+            <BrowseMarkdown markdown={longSummary ?? ""} />
           </div>
         </>
       ) : null}
