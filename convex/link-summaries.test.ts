@@ -10,6 +10,13 @@ const modules = import.meta.glob("./**/*.*s");
 
 const generateTextMock = vi.fn();
 
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+  default: {
+    lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+  },
+}));
+
 vi.mock("ai", () => ({
   Output: { object: () => ({}) },
   generateText: (...args: unknown[]) => generateTextMock(...args),

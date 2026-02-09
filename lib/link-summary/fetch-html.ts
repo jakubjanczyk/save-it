@@ -1,8 +1,14 @@
+import type { ResolveHostname } from "./ssrf-guard";
+import { assertSafeFetchTarget, defaultResolveHostname } from "./ssrf-guard";
+
+export type { ResolveHostname } from "./ssrf-guard";
+
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
 export interface FetchHtmlOptions {
   maxBytes?: number;
   timeoutMs?: number;
+  resolveHostname?: ResolveHostname;
 }
 
 export interface FetchHtmlResult {
@@ -12,6 +18,22 @@ export interface FetchHtmlResult {
 
 const DEFAULT_MAX_BYTES = 1_000_000;
 const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_MAX_REDIRECTS = 5;
+
+function parseHttpUrl(input: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only HTTP(S) URLs are supported");
+  }
+
+  return parsed;
+}
 
 function isHtmlContentType(contentType: string | null): boolean {
   if (!contentType) {
@@ -80,24 +102,81 @@ async function readResponseTextWithLimit(
   return new TextDecoder().decode(allBytes);
 }
 
+function isRedirectStatus(status: number): boolean {
+  return status >= 300 && status < 400 && status !== 304;
+}
+
+function getRedirectLocation(response: Response): string {
+  const location = response.headers.get("location");
+  if (!location) {
+    throw new Error("Redirect missing location header");
+  }
+  return location;
+}
+
+async function parseHtmlResponse(
+  response: Response,
+  current: URL,
+  maxBytes: number
+): Promise<FetchHtmlResult> {
+  if (!response.ok) {
+    throw new Error(`Fetch failed with status ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (!isHtmlContentType(contentType)) {
+    throw new Error(`Unexpected content-type: ${contentType ?? "(missing)"}`);
+  }
+
+  const html = await readResponseTextWithLimit(response, maxBytes);
+  const finalUrl = response.url || current.toString();
+  return { finalUrl, html };
+}
+
+async function fetchHtmlFollowingRedirects(
+  fetcher: Fetcher,
+  startUrl: URL,
+  maxBytes: number,
+  signal: AbortSignal,
+  resolveHostname: ResolveHostname
+): Promise<FetchHtmlResult> {
+  let current = startUrl;
+
+  for (let redirects = 0; redirects <= DEFAULT_MAX_REDIRECTS; redirects++) {
+    await assertSafeFetchTarget(current, resolveHostname);
+
+    const response = await fetcher(current.toString(), {
+      redirect: "manual",
+      signal,
+    });
+
+    if (isRedirectStatus(response.status)) {
+      if (redirects === DEFAULT_MAX_REDIRECTS) {
+        throw new Error("Too many redirects");
+      }
+
+      current = parseHttpUrl(
+        new URL(getRedirectLocation(response), current).toString()
+      );
+      continue;
+    }
+
+    return parseHtmlResponse(response, current, maxBytes);
+  }
+
+  throw new Error("Too many redirects");
+}
+
 export async function fetchHtml(
   fetcher: Fetcher,
   url: string,
   options: FetchHtmlOptions = {}
 ): Promise<FetchHtmlResult> {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error("Invalid URL");
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Only HTTP(S) URLs are supported");
-  }
+  const startUrl = parseHttpUrl(url);
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const resolveHostname = options.resolveHostname ?? defaultResolveHostname;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -105,23 +184,13 @@ export async function fetchHtml(
   }, timeoutMs);
 
   try {
-    const response = await fetcher(url, {
-      redirect: "follow",
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Fetch failed with status ${response.status}`);
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (!isHtmlContentType(contentType)) {
-      throw new Error(`Unexpected content-type: ${contentType ?? "(missing)"}`);
-    }
-
-    const html = await readResponseTextWithLimit(response, maxBytes);
-    const finalUrl = response.url || url;
-    return { finalUrl, html };
+    return await fetchHtmlFollowingRedirects(
+      fetcher,
+      startUrl,
+      maxBytes,
+      controller.signal,
+      resolveHostname
+    );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Fetch timed out");
