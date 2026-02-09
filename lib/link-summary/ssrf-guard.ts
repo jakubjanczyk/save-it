@@ -1,8 +1,3 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
-
-export type ResolveHostname = (hostname: string) => Promise<string[]>;
-
 function normalizeHostname(hostname: string): string {
   const lower = hostname.toLowerCase();
   return lower.endsWith(".") ? lower.slice(0, -1) : lower;
@@ -224,28 +219,7 @@ function isBlockedIpv6(address: string): boolean {
   return false;
 }
 
-function isBlockedIp(address: string): boolean {
-  const family = isIP(address);
-  if (family === 4) {
-    return isBlockedIpv4(address);
-  }
-  if (family === 6) {
-    return isBlockedIpv6(address);
-  }
-  return true;
-}
-
-export async function defaultResolveHostname(
-  hostname: string
-): Promise<string[]> {
-  const results = await lookup(hostname, { all: true, verbatim: true });
-  return results.map((result) => result.address);
-}
-
-export async function assertSafeFetchTarget(
-  target: URL,
-  resolveHostname: ResolveHostname
-): Promise<void> {
+export function assertSafeFetchTarget(target: URL): void {
   if (target.username || target.password) {
     throw new Error("URL credentials are not allowed");
   }
@@ -263,19 +237,15 @@ export async function assertSafeFetchTarget(
     throw new Error("Blocked unsafe URL host");
   }
 
-  if (isIP(hostname)) {
-    if (isBlockedIp(hostname)) {
+  const isIpv4Literal = parseIpv4Bytes(hostname) !== null;
+  const isIpv6Literal = ipv6ToHextets(hostname) !== null;
+  if (isIpv4Literal || isIpv6Literal) {
+    const blocked = isIpv4Literal
+      ? isBlockedIpv4(hostname)
+      : isBlockedIpv6(hostname);
+    if (blocked) {
       throw new Error("Blocked private network address");
     }
     return;
-  }
-
-  const addresses = await resolveHostname(hostname);
-  if (addresses.length === 0) {
-    throw new Error("Failed to resolve hostname");
-  }
-
-  if (addresses.some((address) => isBlockedIp(address))) {
-    throw new Error("Blocked private network address");
   }
 }

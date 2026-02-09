@@ -1,14 +1,10 @@
-import type { ResolveHostname } from "./ssrf-guard";
-import { assertSafeFetchTarget, defaultResolveHostname } from "./ssrf-guard";
-
-export type { ResolveHostname } from "./ssrf-guard";
+import { assertSafeFetchTarget } from "./ssrf-guard";
 
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
 export interface FetchHtmlOptions {
   maxBytes?: number;
   timeoutMs?: number;
-  resolveHostname?: ResolveHostname;
 }
 
 export interface FetchHtmlResult {
@@ -137,13 +133,12 @@ async function fetchHtmlFollowingRedirects(
   fetcher: Fetcher,
   startUrl: URL,
   maxBytes: number,
-  signal: AbortSignal,
-  resolveHostname: ResolveHostname
+  signal: AbortSignal
 ): Promise<FetchHtmlResult> {
   let current = startUrl;
 
   for (let redirects = 0; redirects <= DEFAULT_MAX_REDIRECTS; redirects++) {
-    await assertSafeFetchTarget(current, resolveHostname);
+    assertSafeFetchTarget(current);
 
     const response = await fetcher(current.toString(), {
       redirect: "manual",
@@ -176,7 +171,6 @@ export async function fetchHtml(
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  const resolveHostname = options.resolveHostname ?? defaultResolveHostname;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -188,8 +182,7 @@ export async function fetchHtml(
       fetcher,
       startUrl,
       maxBytes,
-      controller.signal,
-      resolveHostname
+      controller.signal
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
