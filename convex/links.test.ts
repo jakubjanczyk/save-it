@@ -80,11 +80,8 @@ const listSaved: FunctionReference<
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
       summaryLongSummary?: string;
-      summaryModel?: string;
-      summaryPromptVersion?: string;
       summaryStatus?: "pending" | "running" | "success" | "failed";
       summaryTldr?: string;
-      summaryUpdatedAt?: number;
     }>;
   }
 > = makeFunctionReference("links:listSaved");
@@ -122,8 +119,6 @@ const setSummaryRunning: FunctionReference<
   "internal",
   {
     linkId: GenericId<"links">;
-    model: string;
-    promptVersion: string;
     extractedTitle?: string;
   },
   null
@@ -134,8 +129,6 @@ const setSummaryRunning: FunctionReference<
   "internal",
   {
     linkId: GenericId<"links">;
-    model: string;
-    promptVersion: string;
     extractedTitle?: string;
   },
   null
@@ -1338,7 +1331,6 @@ test("listSaved includes summary fields when present", async () => {
     })
   );
 
-  const summaryUpdatedAt = Date.now();
   await t.run((ctx) =>
     ctx.db.insert("links", {
       description: "Desc",
@@ -1350,11 +1342,8 @@ test("listSaved includes summary fields when present", async () => {
       summaryAttemptCount: 2,
       summaryExtractedTitle: "Best Title",
       summaryLongSummary: "Long summary here",
-      summaryModel: "gemini-test",
-      summaryPromptVersion: "v1",
       summaryStatus: "success",
       summaryTldr: "TL;DR here",
-      summaryUpdatedAt,
     })
   );
 
@@ -1365,10 +1354,7 @@ test("listSaved includes summary fields when present", async () => {
   expect(result.items[0]?.summaryExtractedTitle).toBe("Best Title");
   expect(result.items[0]?.summaryTldr).toBe("TL;DR here");
   expect(result.items[0]?.summaryLongSummary).toBe("Long summary here");
-  expect(result.items[0]?.summaryModel).toBe("gemini-test");
-  expect(result.items[0]?.summaryPromptVersion).toBe("v1");
   expect(result.items[0]?.summaryAttemptCount).toBe(2);
-  expect(result.items[0]?.summaryUpdatedAt).toBe(summaryUpdatedAt);
 });
 
 test("listSaved respects sort order", async () => {
@@ -1700,10 +1686,9 @@ test("setSummaryPending clears errors and increments attempt count", async () =>
   expect(updated?.summaryAttemptCount).toBe(3);
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();
-  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
 });
 
-test("setSummaryRunning stores metadata and clears errors", async () => {
+test("setSummaryRunning stores extracted title and clears errors", async () => {
   const t = convexTest(schema, modules);
 
   const senderId = await t.run((ctx) =>
@@ -1741,19 +1726,14 @@ test("setSummaryRunning stores metadata and clears errors", async () => {
 
   await t.mutation(setSummaryRunning, {
     linkId,
-    model: "gemini-test",
-    promptVersion: "v1",
     extractedTitle: "Best Title",
   });
 
   const updated = await t.run((ctx) => ctx.db.get(linkId));
   expect(updated?.summaryStatus).toBe("running");
-  expect(updated?.summaryModel).toBe("gemini-test");
-  expect(updated?.summaryPromptVersion).toBe("v1");
   expect(updated?.summaryExtractedTitle).toBe("Best Title");
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();
-  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
 });
 
 test("setSummarySuccess stores outputs and clears errors", async () => {
@@ -1806,7 +1786,6 @@ test("setSummarySuccess stores outputs and clears errors", async () => {
   expect(updated?.summaryLongSummary).toBe("Long summary here");
   expect(updated?.summaryErrorStage).toBeUndefined();
   expect(updated?.summaryErrorMessage).toBeUndefined();
-  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
 });
 
 test("setSummaryFailed stores error stage/message", async () => {
@@ -1853,5 +1832,4 @@ test("setSummaryFailed stores error stage/message", async () => {
   expect(updated?.summaryStatus).toBe("failed");
   expect(updated?.summaryErrorStage).toBe("extract");
   expect(updated?.summaryErrorMessage).toBe("Could not extract content");
-  expect(updated?.summaryUpdatedAt).toBeTypeOf("number");
 });

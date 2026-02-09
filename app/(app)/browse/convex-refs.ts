@@ -14,11 +14,8 @@ export interface SavedLinkItem {
   summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
   summaryExtractedTitle?: string;
   summaryLongSummary?: string;
-  summaryModel?: string;
-  summaryPromptVersion?: string;
   summaryStatus?: "pending" | "running" | "success" | "failed";
   summaryTldr?: string;
-  summaryUpdatedAt?: number;
   title: string;
   url: string;
 }

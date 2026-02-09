@@ -3,16 +3,12 @@ import type { GenericId } from "convex/values";
 import { v } from "convex/values";
 import { Effect } from "effect";
 
-import { getLlmModelName } from "../lib/ai";
 import { classifyContentKind } from "../lib/link-summary/content-kind";
 import { extractMainContent } from "../lib/link-summary/extract-main-content";
 import { extractBestTitleFromHtml } from "../lib/link-summary/extract-title";
 import { fetchHtml } from "../lib/link-summary/fetch-html";
 import { isJavaScriptRequiredHtml } from "../lib/link-summary/is-javascript-required";
-import {
-  LINK_SUMMARY_PROMPT_VERSION,
-  llmSummarizeLink,
-} from "../lib/link-summary/llm-summarize-link";
+import { llmSummarizeLink } from "../lib/link-summary/llm-summarize-link";
 import {
   createRaindropBookmark,
   deleteRaindropBookmark,
@@ -124,8 +120,6 @@ const tryStartSummaryRunRef = makeFunctionReference(
   "internal",
   {
     linkId: GenericId<"links">;
-    model: string;
-    promptVersion: string;
   },
   { started: boolean }
 >;
@@ -138,8 +132,6 @@ const setSummaryRunningRef = makeFunctionReference(
   {
     extractedTitle?: string;
     linkId: GenericId<"links">;
-    model: string;
-    promptVersion: string;
   },
   null
 >;
@@ -358,7 +350,6 @@ export const setSummaryPending = internalMutation({
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryStatus: "pending",
-      summaryUpdatedAt: Date.now(),
     });
 
     return null;
@@ -368,8 +359,6 @@ export const setSummaryPending = internalMutation({
 export const setSummaryRunning = internalMutation({
   args: {
     linkId: v.id("links"),
-    model: v.string(),
-    promptVersion: v.string(),
     extractedTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -382,10 +371,7 @@ export const setSummaryRunning = internalMutation({
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryExtractedTitle: args.extractedTitle,
-      summaryModel: args.model,
-      summaryPromptVersion: args.promptVersion,
       summaryStatus: "running",
-      summaryUpdatedAt: Date.now(),
     });
 
     return null;
@@ -412,7 +398,6 @@ export const setSummarySuccess = internalMutation({
       summaryLongSummary: args.longSummary,
       summaryStatus: "success",
       summaryTldr: args.tldr,
-      summaryUpdatedAt: Date.now(),
     });
 
     return null;
@@ -440,7 +425,6 @@ export const setSummaryFailed = internalMutation({
       summaryErrorMessage: args.message,
       summaryErrorStage: args.stage,
       summaryStatus: "failed",
-      summaryUpdatedAt: Date.now(),
     });
 
     return null;
@@ -479,8 +463,6 @@ export const hasPendingLinksByEmail = internalQuery({
 export const tryStartSummaryRun = internalMutation({
   args: {
     linkId: v.id("links"),
-    model: v.string(),
-    promptVersion: v.string(),
   },
   handler: async (ctx, args) => {
     const link = await ctx.db.get(args.linkId);
@@ -499,10 +481,7 @@ export const tryStartSummaryRun = internalMutation({
     await ctx.db.patch(args.linkId, {
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
-      summaryModel: args.model,
-      summaryPromptVersion: args.promptVersion,
       summaryStatus: "running",
-      summaryUpdatedAt: Date.now(),
     });
 
     return { started: true };
@@ -528,12 +507,8 @@ export const generateSummary = internalAction({
       return null;
     }
 
-    const modelName = getLlmModelName();
-
     const started = await ctx.runMutation(tryStartSummaryRunRef, {
       linkId: args.linkId as GenericId<"links">,
-      model: modelName,
-      promptVersion: LINK_SUMMARY_PROMPT_VERSION,
     });
 
     if (!started.started) {
@@ -574,8 +549,6 @@ export const generateSummary = internalAction({
     await ctx.runMutation(setSummaryRunningRef, {
       extractedTitle: extractedTitle?.title,
       linkId: args.linkId as GenericId<"links">,
-      model: modelName,
-      promptVersion: LINK_SUMMARY_PROMPT_VERSION,
     });
 
     const extracted = extractMainContent(html);
@@ -887,11 +860,8 @@ export const listSaved = query({
       summaryErrorStage?: "fetch" | "extract" | "llm" | "parse";
       summaryExtractedTitle?: string;
       summaryLongSummary?: string;
-      summaryModel?: string;
-      summaryPromptVersion?: string;
       summaryStatus?: "pending" | "running" | "success" | "failed";
       summaryTldr?: string;
-      summaryUpdatedAt?: number;
       title: string;
       url: string;
     }> = [];
@@ -909,11 +879,8 @@ export const listSaved = query({
         summaryErrorStage: link.summaryErrorStage,
         summaryExtractedTitle: link.summaryExtractedTitle,
         summaryLongSummary: link.summaryLongSummary,
-        summaryModel: link.summaryModel,
-        summaryPromptVersion: link.summaryPromptVersion,
         summaryStatus: link.summaryStatus,
         summaryTldr: link.summaryTldr,
-        summaryUpdatedAt: link.summaryUpdatedAt,
         title: link.title,
         url: link.url,
       });

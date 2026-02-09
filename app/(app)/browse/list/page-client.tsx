@@ -91,7 +91,6 @@ export function BrowseListPageClient() {
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryStatus: "pending",
-      summaryUpdatedAt: Date.now(),
     });
 
     try {

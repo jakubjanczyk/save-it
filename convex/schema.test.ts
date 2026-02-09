@@ -135,11 +135,8 @@ describe("convex schema", () => {
         summaryErrorStage: "llm",
         summaryExtractedTitle: "Extracted title",
         summaryLongSummary: "Long summary",
-        summaryModel: "gemini-test",
         summaryStatus: "failed",
         summaryTldr: "TL;DR",
-        summaryUpdatedAt: Date.now(),
-        summaryPromptVersion: "v1",
       })
     );
   });

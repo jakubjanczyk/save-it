@@ -55,9 +55,6 @@ export default defineSchema({
     summaryExtractedTitle: v.optional(v.string()),
     summaryTldr: v.optional(v.string()),
     summaryLongSummary: v.optional(v.string()),
-    summaryModel: v.optional(v.string()),
-    summaryPromptVersion: v.optional(v.string()),
-    summaryUpdatedAt: v.optional(v.number()),
     summaryAttemptCount: v.optional(v.number()),
     summaryErrorStage: v.optional(
       v.union(

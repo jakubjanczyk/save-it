@@ -99,7 +99,6 @@ export function BrowseDeckPageClient() {
       summaryErrorMessage: undefined,
       summaryErrorStage: undefined,
       summaryStatus: "pending",
-      summaryUpdatedAt: Date.now(),
     });
 
     try {
