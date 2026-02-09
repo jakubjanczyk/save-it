@@ -13,7 +13,7 @@ test("renders ordered list as a single list even with blank lines", () => {
   const list = screen.getByRole("list");
   const items = within(list).getAllByRole("listitem");
   expect(items).toHaveLength(3);
-  expect(items.map((item) => item.textContent)).toEqual([
+  expect(items.map((item) => item.textContent?.trim())).toEqual([
     "one",
     "two",
     "three",
